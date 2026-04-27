@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { type ProjectFile, type AIResponse } from '../../types';
-import { SYSTEM_PROMPT } from './prompts';
+import { SYSTEM_PROMPT, REFINE_PROMPT } from './prompts';
 import { parseAIResponse } from './codeParser';
 import { quotaManager } from './AIQuotaManager';
 import { logErrorSafe, logInfoSafe } from '../../utils/logger';
@@ -103,19 +103,18 @@ export class AIOrchestrator {
     const model = this.genAI.getGenerativeModel({ model: this.modelId });
 
     const sanitizedRequest = this.sanitizeInput(request);
-    const sanitizedContext = currentFiles
+    // Serialize current files into the format REFINE_PROMPT expects
+    const serializedContext = currentFiles
       .slice(0, 10)
       .map((f) => `File: ${f.path}\n\n${(f.content ?? '').slice(0, 5000)}`)
       .join('\n\n---\n\n')
       .slice(0, 50000);
-    const sanitizedContextLimited = this.sanitizeInput(sanitizedContext);
+
+    // Use REFINE_PROMPT instead of inline context (ITR-004)
+    const refinePromptContent = REFINE_PROMPT(serializedContext, sanitizedRequest);
 
     try {
-      const result = await model.generateContent([
-        SYSTEM_PROMPT,
-        `Current Project Files:\n${sanitizedContextLimited}`,
-        `User Request for Modification: ${sanitizedRequest}`,
-      ]);
+      const result = await model.generateContent([SYSTEM_PROMPT, refinePromptContent]);
 
       const response = await result.response;
       const text = response.text();

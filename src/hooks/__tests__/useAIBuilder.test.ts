@@ -20,7 +20,7 @@ vi.mock('../../services/ai/AIOrchestrator', () => ({
 }));
 
 // Import type for reference
-import type { AIResponse } from '../../types';
+import type { AIResponse, ProjectFile } from '../../types';
 
 describe('useAIBuilder', () => {
   beforeEach(() => {
@@ -168,5 +168,113 @@ describe('useAIBuilder', () => {
     expect(result.current.isGenerating).toBe(false);
     expect(result.current.error).toBe('string error');
     expect(caughtError).toBe('string error');
+  });
+
+  // ============ ITR-001: refine() method tests ============
+  describe('refine', () => {
+    it('delegates to AIOrchestrator.refineApp with currentFiles and prompt (ITR-001)', async () => {
+      // Given
+      const mockResponse: AIResponse = {
+        message: 'App refined successfully',
+        files: [
+          {
+            path: 'src/App.tsx',
+            content: 'export default function App() { return <h1>Updated</h1>; }',
+          },
+        ],
+      };
+      mockOrchestrator.refineApp.mockResolvedValue(mockResponse);
+      const currentFiles: ProjectFile[] = [
+        { path: 'src/App.tsx', content: 'export default function App() {}' },
+      ];
+
+      // When
+      const { result } = renderHook(() => useAIBuilder());
+
+      let response: AIResponse | undefined;
+      await act(async () => {
+        response = await result.current.refine(
+          currentFiles,
+          'Add a header',
+          'api-key',
+          'gemini-2.5-flash'
+        );
+      });
+
+      // Then
+      expect(mockOrchestrator.updateConfig).toHaveBeenCalledWith('api-key', 'gemini-2.5-flash');
+      expect(mockOrchestrator.refineApp).toHaveBeenCalledWith(currentFiles, 'Add a header');
+      expect(response).toEqual(mockResponse);
+      expect(result.current.isGenerating).toBe(false);
+    });
+
+    it('sets isGenerating to true during refine execution and false after', async () => {
+      // Given
+      let resolveRefine: (value: any) => void;
+      const refinePromise = new Promise<AIResponse>((resolve) => {
+        resolveRefine = resolve;
+      });
+      mockOrchestrator.refineApp.mockReturnValue(refinePromise);
+      const currentFiles: ProjectFile[] = [{ path: 'src/App.tsx', content: 'old' }];
+
+      // When
+      const { result } = renderHook(() => useAIBuilder());
+
+      act(() => {
+        result.current.refine(currentFiles, 'Change it', 'key', 'model');
+      });
+
+      // Then — isGenerating should be true during execution
+      await waitFor(() => {
+        expect(result.current.isGenerating).toBe(true);
+      });
+
+      // Now resolve the promise
+      await act(async () => {
+        resolveRefine!({ message: 'Done' });
+      });
+
+      expect(result.current.isGenerating).toBe(false);
+    });
+
+    it('handles errors from refineApp and sets error state', async () => {
+      // Given
+      const refineError = new Error('Refine failed');
+      mockOrchestrator.refineApp.mockRejectedValue(refineError);
+      const currentFiles: ProjectFile[] = [{ path: 'src/App.tsx', content: 'old' }];
+
+      // When
+      const { result } = renderHook(() => useAIBuilder());
+
+      let caughtError: Error | undefined;
+      await act(async () => {
+        try {
+          await result.current.refine(currentFiles, 'Change it', 'key', 'model');
+        } catch (e) {
+          caughtError = e as Error;
+        }
+      });
+
+      // Then
+      expect(result.current.isGenerating).toBe(false);
+      expect(result.current.error).toEqual(refineError);
+      expect(caughtError).toEqual(refineError);
+    });
+
+    it('updates lastPrompt with the refine request', async () => {
+      // Given
+      mockOrchestrator.refineApp.mockResolvedValue({ message: 'Done' });
+      const currentFiles: ProjectFile[] = [{ path: 'src/App.tsx', content: 'old' }];
+
+      // When
+      const { result } = renderHook(() => useAIBuilder());
+
+      await act(async () => {
+        await result.current.refine(currentFiles, 'Add dark mode', 'key', 'model');
+      });
+
+      // Then
+      expect(result.current.lastPrompt).toBe('Add dark mode');
+    });
   });
 });

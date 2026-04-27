@@ -214,14 +214,14 @@ THINGS TO NEVER DO
 ❌ Create memory leaks (cleanup in useEffect)
 `;
 
-export const REFINE_PROMPT = (_currentFiles: string, _request: string) => `
+export const REFINE_PROMPT = (currentFiles: string, request: string) => `
 You are updating an existing web application while maintaining all quality standards.
 
 Current Project Context (Files):
-\${currentFiles}
+${currentFiles}
 
 User Request for Modification:
-"\${request}"
+"${request}"
 
 IMPORTANT: Maintain all existing security practices, error handling, and code quality.
 Do not introduce regressions or remove safety checks.

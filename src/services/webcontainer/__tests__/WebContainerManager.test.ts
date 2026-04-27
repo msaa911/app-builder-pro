@@ -642,4 +642,120 @@ describe('WebContainerManager', () => {
       mockContainer.fs.readFile.mockResolvedValue(new TextEncoder().encode('file contents'));
     });
   });
+
+  // ============================================
+  // PWU-001, PWU-003: updateFiles — batch file writes without remount
+  // ============================================
+  describe('updateFiles', () => {
+    it('writes each file via writeFile, creating parent dirs with mkdir recursive', async () => {
+      // Given — PWU-001
+      const manager = await WebContainerManager.getInstance();
+      const files: ProjectFile[] = [
+        { path: '/src/components/App.tsx', content: 'export default function App() {}' },
+        { path: '/src/styles.css', content: 'body { margin: 0; }' },
+      ];
+
+      // When
+      await manager.updateFiles(files);
+
+      // Then — mkdir called for parent dirs, writeFile called for each file
+      expect(mockContainer.fs.mkdir).toHaveBeenCalledWith('/src/components', { recursive: true });
+      expect(mockContainer.fs.mkdir).toHaveBeenCalledWith('/src', { recursive: true });
+      expect(mockContainer.fs.writeFile).toHaveBeenCalledWith(
+        '/src/components/App.tsx',
+        'export default function App() {}'
+      );
+      expect(mockContainer.fs.writeFile).toHaveBeenCalledWith(
+        '/src/styles.css',
+        'body { margin: 0; }'
+      );
+    });
+
+    it('sets _isWriting flag to true during entire batch', async () => {
+      // Given — PWU-003: capture flag state during file writes
+      const flagsDuringWrite: boolean[] = [];
+      mockContainer.fs.writeFile.mockImplementation(async () => {
+        const manager = await WebContainerManager.getInstance();
+        flagsDuringWrite.push((manager as any)._isWriting);
+      });
+      const manager = await WebContainerManager.getInstance();
+      const files: ProjectFile[] = [
+        { path: '/src/A.tsx', content: 'A' },
+        { path: '/src/B.tsx', content: 'B' },
+      ];
+
+      // When
+      await manager.updateFiles(files);
+
+      // Then — _isWriting was true for ALL writes in the batch
+      expect(flagsDuringWrite.every((f) => f === true)).toBe(true);
+    });
+
+    it('clears _isWriting flag after batch completes', async () => {
+      // Given — PWU-003
+      const manager = await WebContainerManager.getInstance();
+
+      // When
+      await manager.updateFiles([{ path: '/src/App.tsx', content: 'code' }]);
+
+      // Then
+      expect((manager as any)._isWriting).toBe(false);
+    });
+
+    it('clears _isWriting flag after batch fails', async () => {
+      // Given — error propagation, partial state accepted
+      mockContainer.fs.writeFile.mockRejectedValueOnce(new Error('Write failed'));
+      const manager = await WebContainerManager.getInstance();
+
+      // When
+      await expect(
+        manager.updateFiles([{ path: '/src/App.tsx', content: 'code' }])
+      ).rejects.toThrow('Write failed');
+
+      // Then — flag is reset even after failure
+      expect((manager as any)._isWriting).toBe(false);
+
+      // Reset
+      mockContainer.fs.writeFile.mockResolvedValue(undefined);
+    });
+
+    it('propagates error on mid-batch failure — partial state accepted', async () => {
+      // Given — PWU-001: first file succeeds, second fails
+      mockContainer.fs.writeFile.mockRejectedValueOnce(new Error('Disk full'));
+      const manager = await WebContainerManager.getInstance();
+      const files: ProjectFile[] = [
+        { path: '/src/A.tsx', content: 'A code' },
+        { path: '/src/B.tsx', content: 'B code' },
+      ];
+
+      // When & Then
+      await expect(manager.updateFiles(files)).rejects.toThrow('Disk full');
+
+      // Reset
+      mockContainer.fs.writeFile.mockResolvedValue(undefined);
+    });
+
+    it('handles files at root level (no parent dir needed)', async () => {
+      // Given — file at root, parent is '/'
+      const manager = await WebContainerManager.getInstance();
+      const files: ProjectFile[] = [{ path: '/index.html', content: '<html></html>' }];
+
+      // When
+      await manager.updateFiles(files);
+
+      // Then — no mkdir call for root-level files (parent is '/')
+      expect(mockContainer.fs.mkdir).not.toHaveBeenCalled();
+      expect(mockContainer.fs.writeFile).toHaveBeenCalledWith('/index.html', '<html></html>');
+    });
+
+    it('throws when WebContainer is not booted', async () => {
+      // Given — create a fresh WCM without booting
+      const manager = new (WebContainerManager as any)();
+
+      // When & Then
+      await expect(
+        manager.updateFiles([{ path: '/src/App.tsx', content: 'code' }])
+      ).rejects.toThrow('WebContainer is not booted');
+    });
+  });
 });

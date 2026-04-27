@@ -8,6 +8,13 @@ const mockGetGenerativeModel = vi.fn().mockReturnValue({
   generateContent: mockGenerateContent,
 });
 
+// Mock REFINE_PROMPT so we can verify it's called (ITR-004)
+const mockRefinePrompt = vi.fn().mockReturnValue('MOCK_REFINE_PROMPT_OUTPUT');
+vi.mock('../services/ai/prompts', () => ({
+  SYSTEM_PROMPT: 'MOCK_SYSTEM_PROMPT',
+  REFINE_PROMPT: (...args: any[]) => mockRefinePrompt(...args),
+}));
+
 // Mock the entire module at import time
 vi.mock('@google/generative-ai', () => ({
   GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
@@ -99,7 +106,8 @@ function App() {}
       // Then
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
       const [contents] = mockGenerateContent.mock.calls[0];
-      expect(contents[0]).toContain('App Builder Pro');
+      // SYSTEM_PROMPT is mocked, just verify it's present
+      expect(contents[0]).toBe('MOCK_SYSTEM_PROMPT');
       expect(contents[1]).toContain('Create a simple app');
     });
 
@@ -188,6 +196,55 @@ export default App;
 
       // When/Then
       await expect(orchestrator.refineApp(existingFiles, 'Change')).rejects.toThrow(/Quota Guard/);
+    });
+
+    // ITR-004: refineApp() MUST use REFINE_PROMPT (not inline context)
+    it('calls REFINE_PROMPT with serialized current files and request (ITR-004)', async () => {
+      // Given
+      mockGenerateContent.mockResolvedValueOnce(
+        createMockResponse(`File: src/App.tsx\n\`\`\`tsx\nupdated\n\`\`\``)
+      );
+      const orchestrator = AIOrchestrator.getInstance();
+      const files = [
+        { path: 'src/App.tsx', content: 'function App() {}' },
+        { path: 'src/index.css', content: 'body { margin: 0; }' },
+      ];
+
+      // When
+      await orchestrator.refineApp(files, 'Add a header');
+
+      // Then — REFINE_PROMPT is called with serialized files string + request
+      expect(mockRefinePrompt).toHaveBeenCalledTimes(1);
+      const [contextArg, requestArg] = mockRefinePrompt.mock.calls[0];
+      expect(contextArg).toContain('src/App.tsx');
+      expect(contextArg).toContain('function App() {}');
+      expect(contextArg).toContain('src/index.css');
+      expect(requestArg).toBe('Add a header');
+    });
+
+    it('uses REFINE_PROMPT output as the content sent to Gemini (ITR-004)', async () => {
+      // Given
+      mockGenerateContent.mockResolvedValueOnce(
+        createMockResponse(`File: src/App.tsx\n\`\`\`tsx\nupdated\n\`\`\``)
+      );
+      const orchestrator = AIOrchestrator.getInstance();
+      const files = [{ path: 'src/App.tsx', content: 'old code' }];
+
+      // When
+      await orchestrator.refineApp(files, 'Change something');
+
+      // Then — the content array passed to generateContent should contain
+      // SYSTEM_PROMPT + REFINE_PROMPT output (NOT inline "Current Project Files:")
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const [contents] = mockGenerateContent.mock.calls[0];
+      // First element is system prompt
+      expect(contents[0]).toBe('MOCK_SYSTEM_PROMPT');
+      // Second element is REFINE_PROMPT output
+      expect(contents[1]).toBe('MOCK_REFINE_PROMPT_OUTPUT');
+      // Verify NO inline "Current Project Files:" text in any content part
+      for (const part of contents) {
+        expect(part).not.toContain('Current Project Files:');
+      }
     });
   });
 

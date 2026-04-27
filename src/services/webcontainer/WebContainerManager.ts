@@ -130,6 +130,33 @@ export class WebContainerManager {
     }
   }
 
+  /**
+   * Batch-write multiple files without full remount (PWU-001).
+   * For each file: mkdir parent dirs (recursive), then writeFile.
+   * Sequential execution; _isWriting flag set for entire batch (PWU-003).
+   * On failure, error propagates — partial state accepted (file A written, file B failed).
+   */
+  public async updateFiles(files: ProjectFile[]): Promise<void> {
+    this.requireBooted();
+    this._isWriting = true;
+    try {
+      for (const file of files) {
+        // Extract parent directory path
+        const lastSlash = file.path.lastIndexOf('/');
+        const parentDir = file.path.substring(0, lastSlash);
+
+        // Create parent dirs if not root '/'
+        if (parentDir && parentDir !== '/') {
+          await this.webcontainerInstance!.fs.mkdir(parentDir, { recursive: true });
+        }
+
+        await this.webcontainerInstance!.fs.writeFile(file.path, file.content ?? '');
+      }
+    } finally {
+      this._isWriting = false;
+    }
+  }
+
   public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     this.requireBooted();
     if (PROTECTED_PATHS.includes(path)) {
