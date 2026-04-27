@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ConfidenceCalculator } from '../services/analyzer/confidence';
+import { ConfidenceCalculator, createConfidenceCalculator } from '../services/analyzer/confidence';
 import type {
   Entity,
   AuthRequirement,
@@ -328,6 +328,330 @@ describe('ConfidenceCalculator', () => {
       const result = calculator.isLowConfidence(70);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('isHighConfidence', () => {
+    it('should return true when confidence >= 80', () => {
+      const calculator = new ConfidenceCalculator();
+
+      expect(calculator.isHighConfidence(80)).toBe(true);
+      expect(calculator.isHighConfidence(90)).toBe(true);
+      expect(calculator.isHighConfidence(100)).toBe(true);
+    });
+
+    it('should return false when confidence < 80', () => {
+      const calculator = new ConfidenceCalculator();
+
+      expect(calculator.isHighConfidence(79)).toBe(false);
+      expect(calculator.isHighConfidence(60)).toBe(false);
+      expect(calculator.isHighConfidence(0)).toBe(false);
+    });
+  });
+
+  describe('isMediumConfidence', () => {
+    it('should return true when confidence >= 60 and < 80', () => {
+      const calculator = new ConfidenceCalculator();
+
+      expect(calculator.isMediumConfidence(60)).toBe(true);
+      expect(calculator.isMediumConfidence(70)).toBe(true);
+      expect(calculator.isMediumConfidence(79)).toBe(true);
+    });
+
+    it('should return false when confidence < 60', () => {
+      const calculator = new ConfidenceCalculator();
+
+      expect(calculator.isMediumConfidence(59)).toBe(false);
+      expect(calculator.isMediumConfidence(0)).toBe(false);
+    });
+
+    it('should return false when confidence >= 80', () => {
+      const calculator = new ConfidenceCalculator();
+
+      expect(calculator.isMediumConfidence(80)).toBe(false);
+      expect(calculator.isMediumConfidence(100)).toBe(false);
+    });
+  });
+
+  describe('createConfidenceCalculator factory', () => {
+    it('should create a ConfidenceCalculator instance', () => {
+      const calculator = createConfidenceCalculator();
+      expect(calculator).toBeInstanceOf(ConfidenceCalculator);
+    });
+
+    it('should produce same results as direct construction', () => {
+      const factoryCalc = createConfidenceCalculator();
+      const directCalc = new ConfidenceCalculator();
+
+      expect(factoryCalc.isHighConfidence(80)).toBe(directCalc.isHighConfidence(80));
+      expect(factoryCalc.isLowConfidence(50)).toBe(directCalc.isLowConfidence(50));
+      expect(factoryCalc.shouldTriggerAIFallback(70)).toBe(directCalc.shouldTriggerAIFallback(70));
+    });
+  });
+
+  describe('calculateStorageConfidence - branch coverage', () => {
+    it('should NOT add bonus when contentType is "any"', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const storage: StorageRequirement = {
+        contentType: 'any',
+        triggerPattern: 'fileInput',
+        confidence: 70,
+      };
+
+      const result = calculator.calculateStorageConfidence(storage);
+
+      // contentType === 'any' → no bonus, just base confidence
+      expect(result).toBe(70);
+    });
+
+    it('should NOT add bonus when contentType is undefined', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const storage: StorageRequirement = {
+        contentType: undefined as any,
+        triggerPattern: 'fileInput',
+        confidence: 70,
+      };
+
+      const result = calculator.calculateStorageConfidence(storage);
+
+      // contentType === undefined → no bonus
+      expect(result).toBe(70);
+    });
+
+    it('should add bonus when contentType is specific (not "any", not undefined)', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const storage: StorageRequirement = {
+        contentType: 'image',
+        triggerPattern: 'fileInput',
+        confidence: 70,
+      };
+
+      const result = calculator.calculateStorageConfidence(storage);
+
+      // Specific contentType → +5 bonus
+      expect(result).toBeGreaterThan(70);
+    });
+  });
+
+  describe('calculateEntityConfidence - branch coverage', () => {
+    it('should not add explicit interface bonus for matchType other than "pattern"', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const entity: Entity = {
+        name: 'User',
+        typeName: 'User',
+        fields: [{ name: 'id', type: 'string', isOptional: false }],
+        confidence: 80,
+        matchType: 'ai', // not 'pattern'
+      };
+
+      const result = calculator.calculateEntityConfidence(entity);
+
+      // No explicit interface bonus since matchType !== 'pattern'
+      expect(result).toBe(80);
+    });
+
+    it('should add explicit interface bonus for pattern match with explicit name', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const entity: Entity = {
+        name: 'User',
+        typeName: 'User',
+        fields: [{ name: 'id', type: 'string', isOptional: false }],
+        confidence: 80,
+        matchType: 'pattern',
+      };
+
+      const result = calculator.calculateEntityConfidence(entity);
+
+      // Pattern + explicit interface → +5
+      expect(result).toBeGreaterThan(80);
+    });
+
+    it('should NOT add explicit interface bonus for generic typeName "Data"', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const entity: Entity = {
+        name: 'Data',
+        typeName: 'Data',
+        fields: [{ name: 'id', type: 'string', isOptional: false }],
+        confidence: 80,
+        matchType: 'pattern',
+      };
+
+      const result = calculator.calculateEntityConfidence(entity);
+
+      // Generic name "Data" → -10 penalty + no explicit bonus
+      expect(result).toBeLessThan(80);
+    });
+
+    it('should not penalize or bonus for entity with exactly 1 field', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const entity: Entity = {
+        name: 'Item',
+        typeName: 'Item',
+        fields: [{ name: 'id', type: 'string', isOptional: false }],
+        confidence: 80,
+        matchType: 'ai',
+      };
+
+      const result = calculator.calculateEntityConfidence(entity);
+
+      // 1 field → neither MULTIPLE_FIELDS bonus nor empty penalty, but generic name "Item" → -10
+      expect(result).toBeLessThan(80);
+    });
+
+    it('should add MULTIPLE_FIELDS bonus for entity with >=2 fields', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const entity: Entity = {
+        name: 'Product',
+        typeName: 'Product',
+        fields: [
+          { name: 'id', type: 'string', isOptional: false },
+          { name: 'name', type: 'string', isOptional: false },
+        ],
+        confidence: 80,
+        matchType: 'ai',
+      };
+
+      const result = calculator.calculateEntityConfidence(entity);
+
+      // >=2 fields → +5
+      expect(result).toBe(85);
+    });
+
+    it('should subtract penalty for entity with 0 fields', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const entity: Entity = {
+        name: 'Product',
+        typeName: 'Product',
+        fields: [],
+        confidence: 80,
+        matchType: 'ai',
+      };
+
+      const result = calculator.calculateEntityConfidence(entity);
+
+      // 0 fields → -10
+      expect(result).toBe(70);
+    });
+  });
+
+  describe('calculateAggregate - empty arrays branch coverage', () => {
+    it('should handle empty entities array (avgEntity = 0)', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const requirements: BackendRequirements = {
+        entities: [],
+        hasAuth: true,
+        authRequirements: [{ type: 'login', triggerPattern: 'useAuth', confidence: 95 }],
+        hasStorage: true,
+        storageRequirements: [
+          { contentType: 'image', triggerPattern: 'fileInput', confidence: 85 },
+        ],
+        crudOperations: [],
+        overallConfidence: 50,
+        analysisMethod: 'pattern',
+        analyzedAt: new Date().toISOString(),
+      };
+
+      const result = calculator.calculateAggregate(requirements);
+
+      // Should not throw, should produce a valid score
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle all empty arrays (returns 0)', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const requirements: BackendRequirements = {
+        entities: [],
+        hasAuth: false,
+        authRequirements: [],
+        hasStorage: false,
+        storageRequirements: [],
+        crudOperations: [],
+        overallConfidence: 0,
+        analysisMethod: 'pattern',
+        analyzedAt: new Date().toISOString(),
+      };
+
+      const result = calculator.calculateAggregate(requirements);
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('calculateAuthConfidence - userFields branch', () => {
+    it('should add bonus when auth has userFields', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const auth: AuthRequirement = {
+        type: 'login',
+        triggerPattern: 'LoginForm',
+        confidence: 70,
+        userFields: ['email', 'password'],
+      };
+
+      const result = calculator.calculateAuthConfidence(auth);
+
+      // userFields present and non-empty → +5
+      expect(result).toBeGreaterThan(70);
+    });
+
+    it('should NOT add bonus when auth has empty userFields', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const auth: AuthRequirement = {
+        type: 'login',
+        triggerPattern: 'LoginForm',
+        confidence: 70,
+        userFields: [],
+      };
+
+      const result = calculator.calculateAuthConfidence(auth);
+
+      // Empty userFields → no bonus
+      expect(result).toBe(70);
+    });
+  });
+
+  describe('calculateCRUDConfidence - formSubmit branch', () => {
+    it('should subtract 5 for formSubmit trigger pattern', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const crud: CRUDSOperation = {
+        entity: 'User',
+        operation: 'create',
+        triggerPattern: 'formSubmit',
+        confidence: 80,
+      };
+
+      const result = calculator.calculateCRUDConfidence(crud);
+
+      expect(result).toBe(75);
+    });
+
+    it('should not subtract for non-formSubmit trigger pattern', () => {
+      const calculator = new ConfidenceCalculator();
+
+      const crud: CRUDSOperation = {
+        entity: 'User',
+        operation: 'create',
+        triggerPattern: 'handleCreate',
+        confidence: 80,
+      };
+
+      const result = calculator.calculateCRUDConfidence(crud);
+
+      expect(result).toBe(80);
     });
   });
 });

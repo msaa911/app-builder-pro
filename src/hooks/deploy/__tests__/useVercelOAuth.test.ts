@@ -208,4 +208,50 @@ describe('useVercelOAuth', () => {
     expect(result.current.status).toBe('error');
     expect(result.current.error?.message).toContain('verifier');
   });
+
+  it('should set error when login throws synchronously', async () => {
+    // Mock generateCodeVerifier to throw — this triggers the catch block at lines 91-95
+    vi.doMock('../../../services/deploy/pkce', () => ({
+      generateCodeVerifier: () => {
+        throw new Error('Crypto not available');
+      },
+      generateCodeChallenge: vi.fn().mockResolvedValue('challenge'),
+    }));
+
+    const { useVercelOAuth: useOAuthFresh } = await import('../useVercelOAuth');
+    const { result } = renderHook(() => useOAuthFresh());
+
+    act(() => {
+      result.current.login();
+    });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error?.message).toContain('Crypto not available');
+    // Verifier should be cleaned from sessionStorage
+    expect(sessionStorage.getItem('vercel_oauth_verifier')).toBeNull();
+
+    vi.doUnmock('../../../services/deploy/pkce');
+  });
+
+  it('should handle non-Error thrown value in login catch', async () => {
+    // Mock generateCodeVerifier to throw a non-Error value
+    vi.doMock('../../../services/deploy/pkce', () => ({
+      generateCodeVerifier: () => {
+        throw 'string error';
+      },
+      generateCodeChallenge: vi.fn().mockResolvedValue('challenge'),
+    }));
+
+    const { useVercelOAuth: useOAuthFresh } = await import('../useVercelOAuth');
+    const { result } = renderHook(() => useOAuthFresh());
+
+    act(() => {
+      result.current.login();
+    });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error?.message).toBe('OAuth login failed');
+
+    vi.doUnmock('../../../services/deploy/pkce');
+  });
 });

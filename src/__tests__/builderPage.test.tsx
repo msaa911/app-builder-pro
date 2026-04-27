@@ -8,7 +8,10 @@ import * as useBackendCreationModule from '../hooks/backend/pipeline/useBackendC
 import * as useSupabaseOAuthModule from '../hooks/backend/oauth/useSupabaseOAuth';
 import * as useAdaptProjectModule from '../services/adapter';
 import * as useFileTreeModule from '../hooks/useFileTree';
+import * as useVercelOAuthModule from '../hooks/deploy/useVercelOAuth';
+import * as useVercelDeployModule from '../hooks/deploy/useVercelDeploy';
 import { PipelineStage } from '../hooks/backend/pipeline/types';
+import { DeployStage } from '../hooks/deploy/types';
 
 // Mock Toast system - capture showToast calls for verification
 const mockShowToast = vi.fn();
@@ -21,13 +24,32 @@ vi.mock('../components/common/Toast', () => ({
 
 // Mock de los componentes hijos
 vi.mock('../components/common/TopBar', () => ({
-  default: ({ projectName, state, onOpenSettings }: any) => (
+  default: ({
+    projectName,
+    state,
+    onOpenSettings,
+    onCreateBackend,
+    onDeploy,
+    hasGeneratedCode,
+    isVercelAuthenticated,
+    isDeploying,
+  }: any) => (
     <div data-testid="topbar">
       <span data-testid="project-name">{projectName}</span>
       <span data-testid="builder-state">{state}</span>
       <button data-testid="settings-btn" onClick={onOpenSettings}>
         Settings
       </button>
+      {onCreateBackend && (
+        <button data-testid="btn-create-backend" onClick={onCreateBackend}>
+          Create Backend
+        </button>
+      )}
+      {onDeploy && (
+        <button data-testid="btn-deploy-vercel" onClick={onDeploy} disabled={!hasGeneratedCode}>
+          Deploy
+        </button>
+      )}
     </div>
   ),
 }));
@@ -156,6 +178,39 @@ vi.mock('../components/backend/CredentialsModal', () => ({
   ),
 }));
 
+vi.mock('../components/deploy/DeployModal', () => ({
+  default: ({ stage, progress, error, isDeploying, onRetry, onClose, onAbort }: any) => (
+    <div data-testid="deploy-modal">
+      <span data-testid="deploy-stage">{stage}</span>
+      <span data-testid="deploy-progress">{progress}</span>
+      <span data-testid="deploy-error">{error}</span>
+      <span data-testid="deploy-is-deploying">{String(isDeploying)}</span>
+      <button data-testid="btn-retry" onClick={onRetry}>
+        Retry
+      </button>
+      <button data-testid="btn-close-deploy" onClick={onClose}>
+        Close
+      </button>
+      <button data-testid="btn-cancel" onClick={onAbort}>
+        Cancel
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('../components/deploy/DeploySuccess', () => ({
+  default: ({ result, onDone }: any) => (
+    <div data-testid="deploy-success">
+      <span data-testid="deploy-url">{result?.url}</span>
+      <span data-testid="deploy-deployment-id">{result?.deploymentId}</span>
+      <span data-testid="deploy-project-name">{result?.projectName}</span>
+      <button data-testid="btn-done-deploy" onClick={onDone}>
+        Done
+      </button>
+    </div>
+  ),
+}));
+
 // Valores por defecto para los mocks
 const mockGenerate = vi.fn();
 const mockMount = vi.fn().mockResolvedValue(undefined);
@@ -168,6 +223,14 @@ const mockCreateBackend = vi.fn();
 const mockRetryBackend = vi.fn();
 const mockResetBackend = vi.fn();
 const mockGetToken = vi.fn().mockReturnValue('mock-oauth-token');
+
+// Mock values for Vercel deploy
+const mockVercelLogin = vi.fn();
+const mockVercelExchangeCode = vi.fn();
+const mockVercelDeploy = vi.fn();
+const mockRetryDeploy = vi.fn();
+const mockResetDeploy = vi.fn();
+const mockAbortDeploy = vi.fn();
 
 describe('BuilderPage', () => {
   beforeEach(() => {
@@ -217,6 +280,29 @@ describe('BuilderPage', () => {
       isLoading: false,
       error: null,
       refresh: vi.fn().mockResolvedValue(undefined),
+    } as any);
+
+    // Mock de useVercelOAuth
+    vi.spyOn(useVercelOAuthModule, 'useVercelOAuth').mockReturnValue({
+      isAuthenticated: false,
+      status: 'idle',
+      error: null,
+      login: mockVercelLogin,
+      exchangeCode: mockVercelExchangeCode,
+      logout: vi.fn(),
+    } as any);
+
+    // Mock de useVercelDeploy
+    vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
+      stage: DeployStage.IDLE,
+      progress: 0,
+      isDeploying: false,
+      error: null,
+      result: null,
+      deploy: mockVercelDeploy,
+      retry: mockRetryDeploy,
+      reset: mockResetDeploy,
+      abort: mockAbortDeploy,
     } as any);
   });
 
@@ -1981,6 +2067,183 @@ describe('BuilderPage', () => {
 
         // Then - activeFile should remain as src/App.tsx
         expect(screen.getByTestId('file-name').textContent).toBe('src/App.tsx');
+      });
+    });
+
+    // ============ Deploy Modal Handler Tests ============
+    describe('Deploy modal handlers', () => {
+      it('should close deploy modal when close button clicked', async () => {
+        const initialPrompt = '';
+
+        vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
+          stage: DeployStage.IDLE,
+          progress: 0,
+          isDeploying: false,
+          error: null,
+          result: null,
+          deploy: mockVercelDeploy,
+          retry: mockRetryDeploy,
+          reset: mockResetDeploy,
+          abort: mockAbortDeploy,
+        } as any);
+
+        vi.spyOn(useVercelOAuthModule, 'useVercelOAuth').mockReturnValue({
+          isAuthenticated: true,
+          status: 'authenticated',
+          error: null,
+          login: mockVercelLogin,
+          exchangeCode: mockVercelExchangeCode,
+          logout: vi.fn(),
+        } as any);
+
+        vi.spyOn(useFileTreeModule, 'useFileTree').mockReturnValue({
+          files: [{ path: 'index.html', content: '<html></html>' }],
+          isLoading: false,
+          error: null,
+          refresh: vi.fn().mockResolvedValue(undefined),
+        } as any);
+
+        render(<BuilderPage initialPrompt={initialPrompt} />);
+
+        const deployButton = screen.queryByTestId('btn-deploy');
+        if (deployButton) {
+          fireEvent.click(deployButton);
+
+          await waitFor(() => {
+            expect(screen.queryByTestId('deploy-modal')).not.toBeNull();
+          });
+
+          const closeButton = screen.getByTestId('btn-close-deploy');
+          fireEvent.click(closeButton);
+          expect(mockResetDeploy).toHaveBeenCalled();
+        }
+      });
+
+      it('should call retryDeploy when retry button clicked', async () => {
+        const initialPrompt = '';
+
+        vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
+          stage: DeployStage.ERROR,
+          progress: 50,
+          isDeploying: false,
+          error: 'Deploy failed',
+          result: null,
+          deploy: mockVercelDeploy,
+          retry: mockRetryDeploy,
+          reset: mockResetDeploy,
+          abort: mockAbortDeploy,
+        } as any);
+
+        vi.spyOn(useVercelOAuthModule, 'useVercelOAuth').mockReturnValue({
+          isAuthenticated: true,
+          status: 'authenticated',
+          error: null,
+          login: mockVercelLogin,
+          exchangeCode: mockVercelExchangeCode,
+          logout: vi.fn(),
+        } as any);
+
+        vi.spyOn(useFileTreeModule, 'useFileTree').mockReturnValue({
+          files: [{ path: 'index.html', content: '<html></html>' }],
+          isLoading: false,
+          error: null,
+          refresh: vi.fn().mockResolvedValue(undefined),
+        } as any);
+
+        render(<BuilderPage initialPrompt={initialPrompt} />);
+
+        const retryButton = screen.queryByTestId('btn-retry');
+        if (retryButton) {
+          fireEvent.click(retryButton);
+          expect(mockRetryDeploy).toHaveBeenCalled();
+        }
+      });
+
+      it('should call abortDeploy when cancel button clicked', async () => {
+        const initialPrompt = '';
+
+        vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
+          stage: DeployStage.DEPLOYING,
+          progress: 50,
+          isDeploying: true,
+          error: null,
+          result: null,
+          deploy: mockVercelDeploy,
+          retry: mockRetryDeploy,
+          reset: mockResetDeploy,
+          abort: mockAbortDeploy,
+        } as any);
+
+        vi.spyOn(useVercelOAuthModule, 'useVercelOAuth').mockReturnValue({
+          isAuthenticated: true,
+          status: 'authenticated',
+          error: null,
+          login: mockVercelLogin,
+          exchangeCode: mockVercelExchangeCode,
+          logout: vi.fn(),
+        } as any);
+
+        vi.spyOn(useFileTreeModule, 'useFileTree').mockReturnValue({
+          files: [{ path: 'index.html', content: '<html></html>' }],
+          isLoading: false,
+          error: null,
+          refresh: vi.fn().mockResolvedValue(undefined),
+        } as any);
+
+        render(<BuilderPage initialPrompt={initialPrompt} />);
+
+        const cancelButton = screen.queryByTestId('btn-cancel');
+        if (cancelButton) {
+          fireEvent.click(cancelButton);
+          expect(mockAbortDeploy).toHaveBeenCalled();
+        }
+      });
+    });
+
+    // ============ Deploy Success Handler Tests ============
+    describe('Deploy success handler', () => {
+      it('should close deploy success and reset when Done clicked', async () => {
+        const initialPrompt = '';
+
+        vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
+          stage: DeployStage.COMPLETE,
+          progress: 100,
+          isDeploying: false,
+          error: null,
+          result: {
+            url: 'https://my-app.vercel.app',
+            deploymentId: 'dep_123',
+            projectName: 'my-app',
+          },
+          deploy: mockVercelDeploy,
+          retry: mockRetryDeploy,
+          reset: mockResetDeploy,
+          abort: mockAbortDeploy,
+        } as any);
+
+        vi.spyOn(useVercelOAuthModule, 'useVercelOAuth').mockReturnValue({
+          isAuthenticated: true,
+          status: 'authenticated',
+          error: null,
+          login: mockVercelLogin,
+          exchangeCode: mockVercelExchangeCode,
+          logout: vi.fn(),
+        } as any);
+
+        vi.spyOn(useFileTreeModule, 'useFileTree').mockReturnValue({
+          files: [{ path: 'index.html', content: '<html></html>' }],
+          isLoading: false,
+          error: null,
+          refresh: vi.fn().mockResolvedValue(undefined),
+        } as any);
+
+        render(<BuilderPage initialPrompt={initialPrompt} />);
+
+        const doneButton = screen.queryByTestId('btn-done-deploy');
+        if (doneButton) {
+          fireEvent.click(doneButton);
+          expect(mockResetDeploy).toHaveBeenCalled();
+        }
       });
     });
   });

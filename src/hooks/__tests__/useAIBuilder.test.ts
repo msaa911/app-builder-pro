@@ -56,17 +56,15 @@ describe('useAIBuilder', () => {
     // Given
     const mockResponse: AIResponse = {
       message: 'App generated successfully',
-      files: [
-        { path: 'src/App.tsx', content: 'export default function App() {}' },
-      ],
+      files: [{ path: 'src/App.tsx', content: 'export default function App() {}' }],
       explanation: 'Generated via Gemini SDK',
     };
-    
+
     mockOrchestrator.generateApp.mockResolvedValue(mockResponse);
 
     // When
     const { result } = renderHook(() => useAIBuilder());
-    
+
     await act(async () => {
       await result.current.generate('Create a React app', 'api-key', 'gemini-2.5-flash');
     });
@@ -87,7 +85,7 @@ describe('useAIBuilder', () => {
 
     // When
     const { result } = renderHook(() => useAIBuilder());
-    
+
     let caughtError: Error | undefined;
     await act(async () => {
       try {
@@ -111,7 +109,7 @@ describe('useAIBuilder', () => {
 
     // When
     const { result } = renderHook(() => useAIBuilder());
-    
+
     await act(async () => {
       await result.current.generate('prompt', 'key', 'model');
     });
@@ -125,7 +123,7 @@ describe('useAIBuilder', () => {
     // Given
     const mockResponse1: AIResponse = { message: 'First response' };
     const mockResponse2: AIResponse = { message: 'Second response' };
-    
+
     let callCount = 0;
     mockOrchestrator.generateApp.mockImplementation(() => {
       const response = callCount === 0 ? mockResponse1 : mockResponse2;
@@ -135,11 +133,11 @@ describe('useAIBuilder', () => {
 
     // When
     const { result } = renderHook(() => useAIBuilder());
-    
+
     await act(async () => {
       await result.current.generate('First prompt', 'key', 'model');
     });
-    
+
     await act(async () => {
       await result.current.generate('Second prompt', 'key', 'model');
     });
@@ -147,5 +145,28 @@ describe('useAIBuilder', () => {
     // Then
     expect(result.current.lastPrompt).toBe('Second prompt');
     expect(mockOrchestrator.generateApp).toHaveBeenCalledTimes(2);
+  });
+
+  // ============ RED - Test: generate handles non-Error thrown values ============
+  it('handles non-Error thrown values in catch block', async () => {
+    // Given - generateApp throws a string instead of an Error
+    mockOrchestrator.generateApp.mockRejectedValue('string error');
+
+    // When
+    const { result } = renderHook(() => useAIBuilder());
+
+    let caughtError: unknown;
+    await act(async () => {
+      try {
+        await result.current.generate('Create app', 'api-key', 'model-id');
+      } catch (e) {
+        caughtError = e;
+      }
+    });
+
+    // Then - error should be set as-is (catch block at line 28-30)
+    expect(result.current.isGenerating).toBe(false);
+    expect(result.current.error).toBe('string error');
+    expect(caughtError).toBe('string error');
   });
 });

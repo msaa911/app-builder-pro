@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Component, type ReactNode } from 'react';
 import { AppErrorBoundary } from '../components/common/AppErrorBoundary';
 
@@ -7,6 +7,13 @@ import { AppErrorBoundary } from '../components/common/AppErrorBoundary';
 class ErrorTrigger extends Component<{ error: Error }> {
   override render(): ReactNode {
     throw this.props.error;
+  }
+}
+
+// Test helper that does NOT throw
+class SafeChild extends Component {
+  override render(): ReactNode {
+    return <div data-testid="safe-child">Safe content</div>;
   }
 }
 
@@ -104,5 +111,64 @@ describe('AppErrorBoundary - security', () => {
 
     expect(container.innerHTML).toContain('Authentication failed');
     expect(container.innerHTML).not.toContain('401');
+  });
+
+  // Branch: custom fallback prop
+  it('should render custom fallback when provided', () => {
+    const customFallback = <div data-testid="custom-fallback">Custom error UI</div>;
+
+    const { container } = render(
+      <AppErrorBoundary fallback={customFallback}>
+        <ErrorTrigger error={new Error('test')} />
+      </AppErrorBoundary>
+    );
+
+    expect(container.querySelector('[data-testid="custom-fallback"]')).not.toBeNull();
+    expect(container.innerHTML).toContain('Custom error UI');
+    expect(container.innerHTML).not.toContain('Something went wrong');
+  });
+
+  // Branch: handleReset resets error state
+  it('should reset error state when Try Again is clicked', () => {
+    let shouldThrow = true;
+
+    class ConditionalErrorTrigger extends Component {
+      override render(): ReactNode {
+        if (shouldThrow) {
+          throw new Error('triggered error');
+        }
+        return <div data-testid="recovered">Recovered!</div>;
+      }
+    }
+
+    const { container, queryByTestId, getByText } = render(
+      <AppErrorBoundary>
+        <ConditionalErrorTrigger />
+      </AppErrorBoundary>
+    );
+
+    // Should show error state
+    expect(container.innerHTML).toContain('Something went wrong');
+
+    // Stop throwing so the re-render succeeds
+    shouldThrow = false;
+
+    // Click "Try Again"
+    fireEvent.click(getByText('Try Again'));
+
+    // Should now show recovered content
+    expect(queryByTestId('recovered')).not.toBeNull();
+  });
+
+  // Branch: normal children render when no error
+  it('should render children when no error occurs', () => {
+    const { container } = render(
+      <AppErrorBoundary>
+        <SafeChild />
+      </AppErrorBoundary>
+    );
+
+    expect(container.querySelector('[data-testid="safe-child"]')).not.toBeNull();
+    expect(container.innerHTML).not.toContain('Something went wrong');
   });
 });

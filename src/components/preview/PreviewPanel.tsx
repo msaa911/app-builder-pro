@@ -14,6 +14,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ state, url }) => {
   const isError = state === 'error';
   const isRunning = state === 'running' && url;
 
+  const handleRetry = () => setHasError(false);
+  const handleIframeError = () => setHasError(true);
+
   return (
     <div className="preview-panel">
       <div className="preview-toolbar">
@@ -57,10 +60,12 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ state, url }) => {
           </div>
         ) : isRunning ? (
           hasError ? (
-            <div className="preview-error">
+            <div className="preview-error" data-testid="preview-iframe-error">
               <div className="error-icon">!</div>
               <p>Unable to load preview</p>
-              <button onClick={() => setHasError(false)}>Retry</button>
+              <button onClick={handleRetry} data-testid="retry-button">
+                Retry
+              </button>
             </div>
           ) : (
             <iframe
@@ -68,7 +73,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ state, url }) => {
               sandbox="allow-scripts"
               title="App Preview"
               className="preview-iframe"
-              onError={() => setHasError(true)}
+              onError={handleIframeError}
             />
           )
         ) : (

@@ -6,7 +6,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBackendCreation } from '../useBackendCreation';
-import type { PipelineStage, BackendCreationOptions, BackendCreationResult } from '../types';
+import { PipelineStage } from '../types';
+import type { BackendCreationOptions, BackendCreationResult } from '../types';
 
 // Mock the services
 vi.mock('../../../../services/analyzer/BackendRequirementsAnalyzer', () => ({
@@ -219,28 +220,26 @@ describe('useBackendCreation', () => {
     it('completes pipeline with progress updates', async () => {
       // Setup with delays to track progress
       const analyzerInstance = {
-        analyze: vi
-          .fn()
-          .mockImplementation(
-            () =>
-              new Promise((resolve) =>
-                setTimeout(
-                  () =>
-                    resolve({
-                      entities: [],
-                      authRequirements: [],
-                      storageRequirements: [],
-                      crudOperations: [],
-                      hasAuth: false,
-                      hasStorage: false,
-                      overallConfidence: 80,
-                      analysisMethod: 'pattern',
-                      analyzedAt: new Date().toISOString(),
-                    }),
-                  10
-                )
+        analyze: vi.fn().mockImplementation(
+          () =>
+            new Promise((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    entities: [],
+                    authRequirements: [],
+                    storageRequirements: [],
+                    crudOperations: [],
+                    hasAuth: false,
+                    hasStorage: false,
+                    overallConfidence: 80,
+                    analysisMethod: 'pattern',
+                    analyzedAt: new Date().toISOString(),
+                  }),
+                10
               )
-          ),
+            )
+        ),
       };
       const generatorInstance = {
         generate: vi.fn().mockReturnValue({ sql: '', tables: [], warnings: [] }),
@@ -557,6 +556,31 @@ describe('useBackendCreation', () => {
       const { result } = renderHook(() => useBackendCreation());
 
       // Initially in idle state
+      expect(result.current.retry()).toBe(false);
+    });
+
+    it('retry returns false when in ERROR state but lastCode is empty', async () => {
+      // Set up OAuth to fail (not authenticated) so pipeline enters ERROR
+      mockOAuth.mockReturnValue({
+        getToken: vi.fn().mockReturnValue(null),
+        isAuthenticated: false,
+        status: 'idle',
+        error: null,
+        login: vi.fn(),
+        logout: vi.fn(),
+      });
+
+      const { result } = renderHook(() => useBackendCreation());
+
+      // Call createBackend with empty code — auth fails, sets ERROR
+      // lastCode will be '' (empty string, falsy), so retry returns false (line 307)
+      await act(async () => {
+        await result.current.createBackend('', { projectName: 'test' });
+      });
+
+      expect(result.current.stage).toBe(PipelineStage.ERROR);
+
+      // Retry should return false because lastCode is empty/falsy
       expect(result.current.retry()).toBe(false);
     });
   });

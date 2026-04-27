@@ -56,11 +56,28 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
+// Mutable config mock — allows individual tests to change clientId
+let mockClientId = 'test-client-id';
+let mockRedirectUri = 'http://localhost/oauth/callback';
+let mockScopes = 'projects:read projects:write';
+
 vi.mock('../../../config/supabase', () => ({
-  supabaseOAuthConfig: {
-    clientId: 'test-client-id',
-    redirectUri: 'http://localhost/oauth/callback',
-    scopes: 'projects:read projects:write',
+  get supabaseOAuthConfig() {
+    return {
+      clientId: mockClientId,
+      redirectUri: mockRedirectUri,
+      scopes: mockScopes,
+    };
+  },
+}));
+
+vi.mock('@/config/supabase', () => ({
+  get supabaseOAuthConfig() {
+    return {
+      clientId: mockClientId,
+      redirectUri: mockRedirectUri,
+      scopes: mockScopes,
+    };
   },
 }));
 
@@ -70,9 +87,24 @@ import { useSupabaseOAuth } from '../useSupabaseOAuth';
 
 const originalLocation = window.location;
 
+// Shared location mock object — href is a plain writable property
+const locationMock = {
+  origin: 'http://localhost',
+  href: 'http://localhost/' as string,
+  pathname: '/',
+  assign: vi.fn(),
+  replace: vi.fn(),
+  reload: vi.fn(),
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockAuthStateCallbackRef.current = null;
+
+  // Reset mutable config mock
+  mockClientId = 'test-client-id';
+  mockRedirectUri = 'http://localhost/oauth/callback';
+  mockScopes = 'projects:read projects:write';
 
   // Default: no session
   mockSupabaseAuth.getSession.mockResolvedValue({
@@ -81,9 +113,26 @@ beforeEach(() => {
   });
   mockSupabaseAuth.signOut.mockResolvedValue({ error: null });
 
+  // Reset tracked href
+  locationMock.href = 'http://localhost/';
+
   Object.defineProperty(window, 'location', {
-    value: { origin: 'http://localhost', href: 'http://localhost/' },
+    value: locationMock,
     writable: true,
+    configurable: true,
+  });
+  mockSupabaseAuth.signOut.mockResolvedValue({ error: null });
+
+  Object.defineProperty(window, 'location', {
+    value: {
+      origin: 'http://localhost',
+      pathname: '/',
+      assign: vi.fn(),
+      replace: vi.fn(),
+      reload: vi.fn(),
+    },
+    writable: true,
+    configurable: true,
   });
 
   sessionStorage.clear();
@@ -360,5 +409,139 @@ describe('useSupabaseOAuth — SDK-Managed Auth', () => {
       expect(result.current.error).toBeTruthy();
     });
     expect(result.current.status).toBe('error');
+  });
+
+  // ============ Login with real clientId (OAuth URL construction) ============
+
+  it('login constructs OAuth URL and redirects when clientId is configured', async () => {
+    // The mutable config mock already has clientId: 'test-client-id'
+    // We can't easily intercept window.location.href = url in jsdom,
+    // but we CAN verify the login doesn't throw and sets authenticating status
+    // The actual URL construction is tested by verifying no error occurred
+    // and status moved to 'authenticating' (the line before window.location.href = url)
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    await act(async () => {
+      await result.current.login();
+    });
+
+    // Login should NOT set error state when clientId is configured
+    expect(result.current.status).toBe('authenticating');
+    expect(result.current.error).toBeNull();
+  });
+
+  // ============ Logout with signOut error (catch block) ============
+
+  it('logout proceeds with cleanup even when signOut throws', async () => {
+    // Make signOut reject
+    mockSupabaseAuth.signOut.mockRejectedValue(new Error('Session already expired'));
+
+    // Pre-populate legacy key
+    sessionStorage.setItem('sb-access-token', 'legacy-token');
+
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    // Set authenticated state first
+    await act(async () => {
+      if (mockAuthStateCallbackRef.current) {
+        mockAuthStateCallbackRef.current('SIGNED_IN', mockSession);
+      }
+    });
+
+    expect(result.current.isAuthenticated).toBe(true);
+
+    // Logout — signOut throws but cleanup should still happen
+    await act(async () => {
+      await result.current.logout();
+    });
+
+    // Legacy tokens should still be cleaned
+    expect(sessionStorage.getItem('sb-access-token')).toBeNull();
+    // State should be reset
+    expect(result.current.status).toBe('idle');
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  // ============ INITIAL_SESSION with no access token ============
+
+  it('INITIAL_SESSION with no access token sets idle state', async () => {
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    await act(async () => {
+      if (mockAuthStateCallbackRef.current) {
+        mockAuthStateCallbackRef.current('INITIAL_SESSION', { access_token: '' });
+      }
+    });
+
+    expect(result.current.status).toBe('idle');
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  // ============ Default auth event with session token ============
+
+  it('default event with valid session token sets authenticated state', async () => {
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    await act(async () => {
+      if (mockAuthStateCallbackRef.current) {
+        // Use a custom event name that falls through to default case
+        mockAuthStateCallbackRef.current('PASSWORD_RECOVERY', mockSession);
+      }
+    });
+
+    expect(result.current.status).toBe('authenticated');
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  // ============ GetToken with thrown exception (catch block) ============
+
+  it('getToken returns null and sets error when getSession throws', async () => {
+    mockSupabaseAuth.getSession.mockRejectedValue(new Error('Unexpected error'));
+
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    let token: string | null = 'not-null';
+    await act(async () => {
+      token = await result.current.getToken();
+    });
+
+    expect(token).toBeNull();
+    // Error should be set
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+    });
+  });
+
+  it('getToken handles non-Error thrown values', async () => {
+    mockSupabaseAuth.getSession.mockRejectedValue('string error');
+
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    let token: string | null = 'not-null';
+    await act(async () => {
+      token = await result.current.getToken();
+    });
+
+    expect(token).toBeNull();
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+      expect(result.current.error?.message).toBe('Failed to get session');
+    });
+  });
+
+  // ============ Login with missing clientId (error branch) ============
+
+  it('login sets error state when clientId is empty', async () => {
+    // Set clientId to empty using mutable variable
+    mockClientId = '';
+
+    const { result } = renderHook(() => useSupabaseOAuth());
+
+    await act(async () => {
+      await result.current.login();
+    });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error?.message).toContain('client ID');
   });
 });

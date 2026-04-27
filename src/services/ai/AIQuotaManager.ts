@@ -7,7 +7,7 @@ export interface QuotaConfig {
   circuitBreakerTimeout: number;
 }
 
-class AIQuotaManager {
+export class AIQuotaManager {
   private requestCount: number = 0;
   private errorCount: number = 0;
   private lastReset: number = Date.now();

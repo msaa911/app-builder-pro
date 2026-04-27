@@ -151,5 +151,81 @@ describe('vercelApi', () => {
       const options = mockFetch.mock.calls[0][1];
       expect(options.headers['Authorization']).toBe(`Bearer ${mockToken}`);
     });
+
+    it('should throw when deployment state is CANCELED', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 'dep_123', url: '', state: 'CANCELED' }),
+      });
+
+      await expect(
+        pollDeployment('dep_123', mockToken, { maxAttempts: 5, intervalMs: 10 })
+      ).rejects.toThrow('canceled');
+    });
+
+    it('should handle JSON parse failure in error response (falls back to statusText)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: () => Promise.reject(new Error('invalid json')),
+      });
+
+      await expect(createDeployment(mockToken, mockFiles, 'my-app')).rejects.toThrow(
+        'Vercel API error: 500 Internal Server Error - Internal Server Error'
+      );
+    });
+
+    it('should use Unknown error when both json parse fails and statusText is empty', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: '',
+        json: () => Promise.reject(new Error('invalid json')),
+      });
+
+      await expect(createDeployment(mockToken, mockFiles, 'my-app')).rejects.toThrow(
+        'Unknown error'
+      );
+    });
+
+    it('should throw on non-ok poll response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: () => Promise.resolve({ error: { message: 'Access denied' } }),
+      });
+
+      await expect(
+        pollDeployment('dep_123', mockToken, { maxAttempts: 5, intervalMs: 10 })
+      ).rejects.toThrow('Vercel API error');
+    });
+
+    it('should handle JSON parse failure in poll error response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: () => Promise.reject(new Error('invalid json')),
+      });
+
+      await expect(
+        pollDeployment('dep_123', mockToken, { maxAttempts: 5, intervalMs: 10 })
+      ).rejects.toThrow('Internal Server Error');
+    });
+
+    it('should use Unknown error in poll when both json parse and statusText fail', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: '',
+        json: () => Promise.reject(new Error('invalid json')),
+      });
+
+      await expect(
+        pollDeployment('dep_123', mockToken, { maxAttempts: 5, intervalMs: 10 })
+      ).rejects.toThrow('Unknown error');
+    });
   });
 });

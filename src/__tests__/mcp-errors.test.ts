@@ -146,4 +146,98 @@ describe('mapHttpError', () => {
       expect((error as MCPNetworkError).maxRetries).toBe(0);
     });
   });
+
+  describe('specific status code mappings', () => {
+    it('should map 401 to MCPAuthError', () => {
+      const error = mapHttpError(401, 'Unauthorized');
+      expect(error).toBeInstanceOf(MCPAuthError);
+      expect(error.code).toBe('AUTH');
+      expect(error.message).toBe('Unauthorized');
+    });
+
+    it('should map 403 to MCPAuthError', () => {
+      const error = mapHttpError(403, 'Forbidden');
+      expect(error).toBeInstanceOf(MCPAuthError);
+      expect(error.code).toBe('AUTH');
+    });
+
+    it('should map 404 to MCPNotFoundError', () => {
+      const error = mapHttpError(404, 'Project not found');
+      expect(error).toBeInstanceOf(MCPNotFoundError);
+      expect(error.code).toBe('NOT_FOUND');
+      expect(error.message).toContain('Project not found');
+    });
+
+    it('should map 409 to MCPValidationError with field=name', () => {
+      const error = mapHttpError(409, 'Name already exists');
+      expect(error).toBeInstanceOf(MCPValidationError);
+      expect(error.code).toBe('VALIDATION');
+      expect((error as MCPValidationError).field).toBe('name');
+    });
+
+    it('should map 429 to MCPRateLimitError with context retryAfter', () => {
+      const error = mapHttpError(429, 'Too many requests', { retryAfter: 120 });
+      expect(error).toBeInstanceOf(MCPRateLimitError);
+      expect(error.code).toBe('RATE_LIMIT');
+      expect((error as MCPRateLimitError).retryAfter).toBe(120);
+    });
+
+    it('should map 429 to MCPRateLimitError with default 60 when no context', () => {
+      const error = mapHttpError(429, 'Too many requests');
+      expect(error).toBeInstanceOf(MCPRateLimitError);
+      expect((error as MCPRateLimitError).retryAfter).toBe(60);
+    });
+
+    it('should map 400 to MCPValidationError without field', () => {
+      const error = mapHttpError(400, 'Bad request');
+      expect(error).toBeInstanceOf(MCPValidationError);
+      expect(error.code).toBe('VALIDATION');
+      expect((error as MCPValidationError).field).toBeUndefined();
+    });
+
+    it('should map 500 to MCPNetworkError with maxRetries=3', () => {
+      const error = mapHttpError(500, 'Internal Server Error');
+      expect(error).toBeInstanceOf(MCPNetworkError);
+      expect((error as MCPNetworkError).maxRetries).toBe(3);
+    });
+
+    it('should map 502 to MCPNetworkError with maxRetries=3', () => {
+      const error = mapHttpError(502, 'Bad Gateway');
+      expect(error).toBeInstanceOf(MCPNetworkError);
+      expect((error as MCPNetworkError).maxRetries).toBe(3);
+    });
+
+    it('should map 503 to MCPNetworkError with maxRetries=3', () => {
+      const error = mapHttpError(503, 'Service Unavailable');
+      expect(error).toBeInstanceOf(MCPNetworkError);
+      expect((error as MCPNetworkError).maxRetries).toBe(3);
+    });
+  });
+});
+
+describe('MCPNetworkError defaults', () => {
+  it('should default retryCount to 0 and maxRetries to 3', () => {
+    const error = new MCPNetworkError('Connection failed');
+    expect(error.retryCount).toBe(0);
+    expect(error.maxRetries).toBe(3);
+  });
+});
+
+describe('MCPValidationError', () => {
+  it('should have undefined field when not provided', () => {
+    const error = new MCPValidationError('Invalid input');
+    expect(error.field).toBeUndefined();
+  });
+});
+
+describe('MCPError.getRetryAfter', () => {
+  it('should return undefined when context has no retryAfter', () => {
+    const error = new MCPNetworkError('fail', 0, 3);
+    expect(error.getRetryAfter()).toBeUndefined();
+  });
+
+  it('should return retryAfter from context when present', () => {
+    const error = new MCPNetworkError('fail', 0, 3, { retryAfter: 30 });
+    expect(error.getRetryAfter()).toBe(30);
+  });
 });

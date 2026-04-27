@@ -56,6 +56,29 @@ describe('Retry Logic', () => {
       const result = await withRetry(fn);
       expect(result).toBe('async success');
     });
+
+    it('should call onRetry callback on each retry', async () => {
+      vi.useRealTimers();
+      const onRetry = vi.fn();
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new MCPNetworkError('fail', 0, 3))
+        .mockRejectedValueOnce(new MCPNetworkError('fail', 1, 3))
+        .mockResolvedValue('success');
+
+      const result = await withRetry(fn, { maxRetries: 3, onRetry });
+
+      expect(result).toBe('success');
+      expect(onRetry).toHaveBeenCalledTimes(2);
+      expect(onRetry).toHaveBeenCalledWith(1, expect.any(MCPNetworkError));
+      expect(onRetry).toHaveBeenCalledWith(2, expect.any(MCPNetworkError));
+    });
+
+    it('should handle non-Error thrown values', async () => {
+      const fn = vi.fn().mockRejectedValue('string-error');
+
+      await expect(withRetry(fn, { maxRetries: 0 })).rejects.toThrow('string-error');
+    });
   });
 
   describe('calculateBackoff', () => {

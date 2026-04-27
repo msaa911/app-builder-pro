@@ -26,14 +26,30 @@ export default defineConfig({
         '**/__mocks__/**',
         '**/__fixtures__/**',
         'src/vite-env.d.ts',
+        // Non-app files that contaminate coverage denominator
+        'eslint.config.js',
+        'vite.config.ts',
+        'vitest.config.ts',
+        'scripts/**',
+        'public/mockServiceWorker.js',
+        'getModels.js',
+        'dist/**',
+        // Test infrastructure — not app code
+        'src/__tests__/utils/**',
+        'src/__tests__/e2e/**',
+        // Step definitions are test infrastructure, not app code
+        '**/step_definitions/**',
+        // App entry point — just mounts React, not testable logic
+        'src/App.tsx',
       ],
       // Clean coverage output directory before each run
       clean: true,
       // Coverage thresholds — CI fails when any metric drops below minimum
       thresholds: {
-        statements: 80,
-        branches: 70,
-        functions: 70,
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
       },
     },
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import LandingPage from '../pages/LandingPage';
 
 // Mock framer-motion to avoid animation testing complexity
@@ -273,6 +273,57 @@ describe('LandingPage', () => {
 
       // Then - Feature grid exists
       expect(container.querySelector('[data-testid="feature-grid"]')).not.toBeNull();
+    });
+  });
+
+  describe('LandingPage - whitespace and privacy modal', () => {
+    it('should NOT call onStartBuild when prompt is whitespace-only', () => {
+      const mockOnStart = vi.fn();
+      render(<LandingPage onStartBuild={mockOnStart} />);
+
+      const input = screen.getByPlaceholderText(/What do you want to build today?/i);
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.submit(input.closest('form')!);
+
+      expect(mockOnStart).not.toHaveBeenCalled();
+    });
+
+    it('should open privacy policy modal when privacy link is clicked', () => {
+      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+
+      const privacyButton = document.querySelector('.privacy-link') as HTMLButtonElement;
+      expect(privacyButton).not.toBeNull();
+      act(() => {
+        fireEvent.click(privacyButton);
+      });
+
+      // PrivacyPolicyModal should be rendered with isOpen=true after click
+      const modal = document.querySelector('[data-testid="privacy-modal-overlay"]');
+      expect(modal).not.toBeNull();
+    });
+
+    it('should close privacy policy modal when overlay is clicked', () => {
+      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+
+      // Open the privacy modal
+      const privacyButton = document.querySelector('.privacy-link') as HTMLButtonElement;
+      act(() => {
+        fireEvent.click(privacyButton);
+      });
+
+      // The modal overlay has onClick={onClose} — clicking the overlay background closes it
+      const modalOverlay = document.querySelector(
+        '[data-testid="privacy-modal-overlay"]'
+      ) as HTMLElement;
+      expect(modalOverlay).not.toBeNull();
+
+      // Click the overlay to close
+      act(() => {
+        fireEvent.click(modalOverlay);
+      });
+
+      // After closing, the modal should not be visible (returns null when isOpen=false)
+      expect(document.querySelector('[data-testid="privacy-modal-overlay"]')).toBeNull();
     });
   });
 });
