@@ -71,7 +71,7 @@ export function prepareFiles(files: ProjectFile[]): VercelDeploymentFile[] {
 
   return filtered.map((f) => ({
     file: stripLeadingSlash(f.path),
-    data: encodeToBase64(f.content),
+    data: encodeToBase64(f.content ?? ''),
     encoding: 'base64' as const,
   }));
 }

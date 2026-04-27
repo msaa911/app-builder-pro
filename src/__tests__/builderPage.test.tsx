@@ -95,7 +95,7 @@ vi.mock('../components/editor/FileExplorer', () => ({
         <button
           key={f.path}
           data-testid={`file-click-${f.path}`}
-          onClick={() => onFileSelect?.(f.path, f.content ?? '')}
+          onClick={() => onFileSelect?.(f.path)}
         >
           {f.path}
         </button>
@@ -142,6 +142,30 @@ vi.mock('../components/settings/SettingsModal', () => ({
 
 vi.mock('../services/webcontainer/fileSystem', () => ({
   filesToTree: vi.fn((files) => ({ tree: files })),
+}));
+
+// Mock WebContainerManager — handleFileSelect now calls WCM.readFile
+const mockReadFile = vi.fn().mockImplementation((path: string) => {
+  const contentMap: Record<string, string> = {
+    'src/App.tsx': 'const App = () => <div>Hello</div>',
+    'src/index.ts': 'console.log("hi")',
+    'src/utils.ts': 'export const id = (x: any) => x',
+    'new-file.ts': '',
+  };
+  return Promise.resolve(contentMap[path] ?? '');
+});
+vi.mock('../services/webcontainer/WebContainerManager', () => ({
+  WebContainerManager: {
+    getInstance: vi.fn(() =>
+      Promise.resolve({
+        readFile: mockReadFile,
+        readDir: vi.fn(() => Promise.resolve([])),
+        watch: vi.fn(() => ({ close: vi.fn() })),
+        isWriting: false,
+      })
+    ),
+  },
+  PROTECTED_PATHS: ['/package.json', '/vite.config.ts', '/index.html'],
 }));
 
 vi.mock('../components/backend/BackendCreationModal', () => ({
@@ -236,6 +260,18 @@ describe('BuilderPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockShowToast.mockClear();
+
+    // Restore mockReadFile implementation after clearAllMocks resets it
+    mockReadFile.mockImplementation((path: string) => {
+      const contentMap: Record<string, string> = {
+        'src/App.tsx': 'const App = () => <div>Hello</div>',
+        'src/index.ts': 'console.log("hi")',
+        'src/utils.ts': 'export const id = (x: any) => x',
+        'src/old.ts': '// old file content',
+        'new-file.ts': '',
+      };
+      return Promise.resolve(contentMap[path] ?? '');
+    });
 
     // Mock de useSettings
     vi.spyOn(SettingsContext, 'useSettings').mockReturnValue({

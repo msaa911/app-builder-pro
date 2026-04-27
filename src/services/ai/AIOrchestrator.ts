@@ -105,7 +105,7 @@ export class AIOrchestrator {
     const sanitizedRequest = this.sanitizeInput(request);
     const sanitizedContext = currentFiles
       .slice(0, 10)
-      .map((f) => `File: ${f.path}\n\n${f.content.slice(0, 5000)}`)
+      .map((f) => `File: ${f.path}\n\n${(f.content ?? '').slice(0, 5000)}`)
       .join('\n\n---\n\n')
       .slice(0, 50000);
     const sanitizedContextLimited = this.sanitizeInput(sanitizedContext);

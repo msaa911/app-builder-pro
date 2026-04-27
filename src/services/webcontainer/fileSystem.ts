@@ -14,7 +14,7 @@ export function filesToTree(files: ProjectFile[]): FileSystemTree {
       if (isLast) {
         current[part] = {
           file: {
-            contents: file.content,
+            contents: file.content ?? '',
           },
         };
       } else {

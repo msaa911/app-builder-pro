@@ -14,7 +14,7 @@ export type FileNode = {
 
 export interface ProjectFile {
   path: string;
-  content: string;
+  content?: string;
 }
 
 export interface ChatMessage {

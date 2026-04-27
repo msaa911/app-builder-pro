@@ -14,6 +14,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { DeployStage } from '../types';
+import type { ProjectFile } from '../../../types';
 import type {
   VercelDeploymentResponse,
   VercelDeploymentState,
@@ -75,11 +76,11 @@ beforeEach(() => {
   mockIsAuthenticated = true;
 
   vi.clearAllMocks();
-  mockPrepareFiles.mockImplementation((files: { path: string; content: string }[]) => {
+  mockPrepareFiles.mockImplementation((files: ProjectFile[]) => {
     if (files.length === 0) throw new Error('No files to deploy');
     return files.map((f) => ({
       file: f.path,
-      data: btoa(f.content),
+      data: btoa(f.content ?? ''),
       encoding: 'base64' as const,
     }));
   });

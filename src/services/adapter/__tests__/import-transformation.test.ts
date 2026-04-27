@@ -39,8 +39,8 @@ describe('Import Transformation Integration', () => {
       expect(userList).toBeDefined();
 
       if (result.transformedFiles.includes('src/components/UserList.tsx')) {
-        expect(userList?.content).toContain("import { supabase } from");
-        expect(userList?.content).toContain("../lib/supabase");
+        expect(userList?.content).toContain('import { supabase } from');
+        expect(userList?.content).toContain('../lib/supabase');
       }
     });
 
@@ -100,7 +100,7 @@ describe('Import Transformation Integration', () => {
       const loginForm = result.files.find((f) => f.path === 'src/components/LoginForm.tsx');
 
       if (result.transformedFiles.includes('src/components/LoginForm.tsx')) {
-        expect(loginForm?.content).toContain("import { useAuth } from");
+        expect(loginForm?.content).toContain('import { useAuth } from');
       }
     });
 
@@ -156,8 +156,8 @@ export default App;`,
         const app = result.files.find((f) => f.path === 'src/App.tsx');
 
         // Import should be after the existing imports
-        const importIndex = app?.content.indexOf("import { supabase }");
-        const reactImportIndex = app?.content.indexOf("import React");
+        const importIndex = app?.content?.indexOf('import { supabase }');
+        const reactImportIndex = app?.content?.indexOf('import React');
 
         expect(importIndex).toBeGreaterThan(reactImportIndex!);
       }
@@ -186,7 +186,7 @@ interface User { id: string; }`,
         const helper = result.files.find((f) => f.path === 'src/utils/helper.ts');
 
         // Import should be at the very beginning
-        expect(helper?.content.startsWith('import')).toBe(true);
+        expect(helper?.content?.startsWith('import')).toBe(true);
       }
     });
   });
@@ -238,7 +238,7 @@ export function Auth() {
 
       // Count useAuth imports
       const auth = result.files.find((f) => f.path === 'src/components/Auth.tsx');
-      const importCount = (auth?.content.match(/import.*useAuth.*from/g) || []).length;
+      const importCount = (auth?.content?.match(/import.*useAuth.*from/g) || []).length;
 
       expect(importCount).toBeLessThanOrEqual(1);
     });

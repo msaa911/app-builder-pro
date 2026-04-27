@@ -268,7 +268,10 @@ export class SupabaseFrontendAdapter {
       const filePath = file.path;
 
       // Only transform TypeScript/TSX files in src
-      if (!filePath.startsWith('src/') || (!filePath.endsWith('.ts') && !filePath.endsWith('.tsx'))) {
+      if (
+        !filePath.startsWith('src/') ||
+        (!filePath.endsWith('.ts') && !filePath.endsWith('.tsx'))
+      ) {
         continue;
       }
 
@@ -277,7 +280,7 @@ export class SupabaseFrontendAdapter {
         continue;
       }
 
-      const originalContent = file.content;
+      const originalContent = file.content ?? '';
       let newContent = originalContent;
       let wasTransformed = false;
 

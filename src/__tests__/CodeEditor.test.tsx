@@ -5,13 +5,15 @@ import CodeEditor from '../components/editor/CodeEditor';
 
 // Mock Monaco Editor — it cannot load in jsdom (Web Worker/WASM deps)
 // Mock at the @monaco-editor/react boundary as per design
+// Uses controlled props: language + value (not defaultLanguage + defaultValue) — CE-001
 vi.mock('@monaco-editor/react', () => ({
   default: (props: any) => (
     <div
       data-testid="monaco-editor"
-      data-language={props.defaultLanguage}
-      data-value={props.defaultValue}
+      data-language={props.language}
+      data-value={props.value}
       data-theme={props.theme}
+      data-onchange={props.onChange ? 'true' : 'false'}
     />
   ),
 }));
@@ -62,7 +64,7 @@ describe('CodeEditor', () => {
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
-    it('should pass default language to Monaco', () => {
+    it('should pass language prop to Monaco (controlled mode — CE-001)', () => {
       render(<CodeEditor language="python" />);
 
       const editor = screen.getByTestId('monaco-editor');
@@ -76,7 +78,7 @@ describe('CodeEditor', () => {
       expect(editor.getAttribute('data-language')).toBe('typescript');
     });
 
-    it('should pass code content to Monaco', () => {
+    it('should pass code as value prop to Monaco (controlled mode — CE-001)', () => {
       render(<CodeEditor code="const x = 42;" />);
 
       const editor = screen.getByTestId('monaco-editor');
@@ -95,6 +97,43 @@ describe('CodeEditor', () => {
 
       const editor = screen.getByTestId('monaco-editor');
       expect(editor.getAttribute('data-theme')).toBe('vs-dark');
+    });
+  });
+
+  describe('controlled mode (CE-001)', () => {
+    it('should use controlled value prop instead of defaultValue', () => {
+      render(<CodeEditor code="controlled content" />);
+
+      const editor = screen.getByTestId('monaco-editor');
+      expect(editor.getAttribute('data-value')).toBe('controlled content');
+    });
+
+    it('should update displayed value when code prop changes', () => {
+      const { rerender } = render(<CodeEditor code="first content" />);
+
+      let editor = screen.getByTestId('monaco-editor');
+      expect(editor.getAttribute('data-value')).toBe('first content');
+
+      // Simulate file switch — code prop changes
+      rerender(<CodeEditor code="second content" />);
+
+      editor = screen.getByTestId('monaco-editor');
+      expect(editor.getAttribute('data-value')).toBe('second content');
+    });
+
+    it('should pass onChange callback to Monaco editor', () => {
+      const onChange = vi.fn();
+      render(<CodeEditor onChange={onChange} />);
+
+      const editor = screen.getByTestId('monaco-editor');
+      expect(editor.getAttribute('data-onchange')).toBe('true');
+    });
+
+    it('should not pass onChange to Monaco when not provided', () => {
+      render(<CodeEditor />);
+
+      const editor = screen.getByTestId('monaco-editor');
+      expect(editor.getAttribute('data-onchange')).toBe('false');
     });
   });
 

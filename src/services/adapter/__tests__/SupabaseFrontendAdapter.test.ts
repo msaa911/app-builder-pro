@@ -296,7 +296,7 @@ describe('SupabaseFrontendAdapter', () => {
       // If file already has supabase import, should not add another
       const appFile = result.files.find((f) => f.path === 'src/App.tsx');
       if (appFile) {
-        const importMatches = appFile.content.match(/import.*supabase.*from/g) || [];
+        const importMatches = appFile.content?.match(/import.*supabase.*from/g) || [];
         expect(importMatches.length).toBeLessThanOrEqual(1);
       }
     });

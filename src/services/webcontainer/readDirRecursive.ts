@@ -48,7 +48,7 @@ export async function readDirRecursive(
       const entryRelativePath = relativePrefix ? `${relativePrefix}/${entry.name}` : entry.name;
 
       if (entry.isFile()) {
-        results.push({ path: entryRelativePath, content: '' });
+        results.push({ path: entryRelativePath });
       } else if (entry.isDirectory()) {
         if (exclude.includes(entry.name)) continue;
         await walk(joinPath(currentPath, entry.name), depth + 1, entryRelativePath);

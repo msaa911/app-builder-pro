@@ -19,7 +19,7 @@ interface FileExplorerProps {
   isLoading?: boolean;
   error?: Error | null;
   onRefresh?: () => void;
-  onFileSelect?: (path: string, content: string) => void;
+  onFileSelect?: (path: string) => void;
   selectedPath?: string;
   onNewItem?: (item: { parentPath: string; name: string; type: 'file' | 'folder' }) => void;
   onDeleteItem?: (item: { path: string; type: 'file' | 'folder' }) => void;
@@ -303,7 +303,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
               item.type === 'folder'
                 ? () => toggleFolder(fullPath)
                 : onFileSelect
-                  ? () => onFileSelect(fullPath, item.content ?? '')
+                  ? () => onFileSelect(fullPath)
                   : undefined
             }
             onContextMenu={(e) =>

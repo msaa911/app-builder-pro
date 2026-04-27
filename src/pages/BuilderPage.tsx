@@ -14,6 +14,8 @@ import DeploySuccess from '../components/deploy/DeploySuccess';
 import { ToastProvider, useToast } from '../components/common/Toast';
 import { type ChatMessage, type BuilderState, type ProjectFile } from '../types';
 import { filesToTree } from '../services/webcontainer/fileSystem';
+import { WebContainerManager } from '../services/webcontainer/WebContainerManager';
+import { isBinaryFile } from '../utils/binaryExtensions';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAIBuilder } from '../hooks/useAIBuilder';
 import { useWebContainer } from '../hooks/useWebContainer';
@@ -179,10 +181,38 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
     setLastError(null);
   }, []);
 
-  // Handler for file selection from FileExplorer (FCREAT-005)
-  const handleFileSelect = useCallback((path: string, content: string) => {
-    setActiveFile({ path, content });
-  }, []);
+  // Race guard counter for async file loads (FCL-004)
+  const loadRequestRef = useRef(0);
+
+  // Handler for file selection from FileExplorer (FCL-001, FCL-004)
+  const handleFileSelect = useCallback(
+    async (path: string) => {
+      const requestId = ++loadRequestRef.current;
+
+      // Binary file check — skip readFile, set placeholder (FCL-003)
+      if (isBinaryFile(path)) {
+        setActiveFile({ path, content: '[Binary file \u2014 preview not available]' });
+        return;
+      }
+
+      try {
+        const wcm = await WebContainerManager.getInstance();
+        const content = await wcm.readFile(path);
+
+        // Race guard: only apply if this is still the latest request (FCL-004)
+        if (requestId !== loadRequestRef.current) return;
+
+        setActiveFile({ path, content });
+      } catch (_error) {
+        // Race guard: discard stale errors too
+        if (requestId !== loadRequestRef.current) return;
+
+        showToast({ message: `Failed to load ${path}`, type: 'error' });
+        setActiveFile({ path, content: '// Error loading file content' });
+      }
+    },
+    [showToast]
+  );
 
   // Handler for creating new file/folder from FileExplorer (FCREAT-005)
   const handleNewItem = useCallback(
@@ -262,7 +292,7 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
     if (currentFiles.length === 0) return;
 
     // Convert files to code string for analysis
-    const codeString = currentFiles.map((f) => `// ${f.path}\n${f.content}`).join('\n\n');
+    const codeString = currentFiles.map((f) => `// ${f.path}\n${f.content ?? ''}`).join('\n\n');
 
     await createBackend(codeString, {
       projectName: 'generated-backend',

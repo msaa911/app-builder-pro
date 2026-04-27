@@ -43,11 +43,8 @@ describe('readDirRecursive', () => {
       // WHEN
       const result = await readDirRecursive(mockFs, '/src');
 
-      // THEN
-      expect(result).toEqual([
-        { path: 'src/App.tsx', content: '' },
-        { path: 'src/index.ts', content: '' },
-      ]);
+      // THEN - results only contain path (content loaded lazily on click)
+      expect(result).toEqual([{ path: 'src/App.tsx' }, { path: 'src/index.ts' }]);
     });
 
     it('returns multiple files at same level with relative paths', async () => {
@@ -78,11 +75,10 @@ describe('readDirRecursive', () => {
       // WHEN
       const result = await readDirRecursive(mockFs, '/');
 
-      // THEN
-      expect(result).toHaveLength(3);
+      // THEN - results only contain path (content loaded lazily on click)
       expect(result.map((f) => f.path)).toEqual(['index.html', 'package.json', 'README.md']);
-      // All files have empty content for tree display
-      expect(result.every((f) => f.content === '')).toBe(true);
+      // No file entry should have a content field
+      expect(result.every((f) => !('content' in f))).toBe(true);
     });
   });
 
@@ -111,8 +107,8 @@ describe('readDirRecursive', () => {
       // WHEN
       const result = await readDirRecursive(mockFs, '/src');
 
-      // THEN
-      expect(result).toEqual([{ path: 'src/components/App.tsx', content: '' }]);
+      // THEN - results only contain path (content loaded lazily on click)
+      expect(result).toEqual([{ path: 'src/components/App.tsx' }]);
     });
 
     it('handles 3-level nesting with mixed files and folders', async () => {
@@ -215,7 +211,7 @@ describe('readDirRecursive', () => {
       const result = await readDirRecursive(mockFs, '/');
 
       // THEN - node_modules and .git are NOT recursed into
-      expect(result).toEqual([{ path: 'src/App.tsx', content: '' }]);
+      expect(result).toEqual([{ path: 'src/App.tsx' }]);
       // readdir should NOT have been called for excluded dirs
       expect(mockFs.readdir).not.toHaveBeenCalledWith('/node_modules', expect.anything());
       expect(mockFs.readdir).not.toHaveBeenCalledWith('/.git', expect.anything());
@@ -266,10 +262,7 @@ describe('readDirRecursive', () => {
       const result = await readDirRecursive(mockFs, '/', { exclude: ['dist'] });
 
       // THEN - node_modules is NOT excluded (we only exclude dist)
-      expect(result).toEqual([
-        { path: 'src/App.tsx', content: '' },
-        { path: 'node_modules/react', content: '' },
-      ]);
+      expect(result).toEqual([{ path: 'src/App.tsx' }, { path: 'node_modules/react' }]);
       expect(mockFs.readdir).toHaveBeenCalledWith('/node_modules', expect.anything());
     });
 
@@ -303,8 +296,8 @@ describe('readDirRecursive', () => {
       // WHEN
       const result = await readDirRecursive(mockFs, '/project');
 
-      // THEN
-      expect(result).toEqual([{ path: 'project/src/main.ts', content: '' }]);
+      // THEN - results only contain path (content loaded lazily on click)
+      expect(result).toEqual([{ path: 'project/src/main.ts' }]);
       expect(mockFs.readdir).not.toHaveBeenCalledWith('/project/.git', expect.anything());
     });
   });
@@ -431,11 +424,8 @@ describe('readDirRecursive', () => {
       // WHEN - maxDepth=2
       const result = await readDirRecursive(mockFs, '/root', { maxDepth: 2 });
 
-      // THEN
-      expect(result).toEqual([
-        { path: 'root/level1/file.ts', content: '' },
-        { path: 'root/readme.txt', content: '' },
-      ]);
+      // THEN - results only contain path (content loaded lazily on click)
+      expect(result).toEqual([{ path: 'root/level1/file.ts' }, { path: 'root/readme.txt' }]);
     });
   });
 
@@ -491,6 +481,89 @@ describe('readDirRecursive', () => {
 
       // THEN - all entries are excluded dirs, so no files
       expect(result).toEqual([]);
+    });
+  });
+
+  // FCL-002: readDirRecursive must NOT include content field (lazy loading)
+  describe('1.6 - no content field in results (lazy file loading)', () => {
+    it('returns file entries without content field', async () => {
+      // GIVEN: /src contains App.tsx
+      const mockFs = createMockFs({
+        '/src': [
+          {
+            name: 'App.tsx',
+            isFile: () => true,
+            isDirectory: () => false,
+            isSymbolicLink: () => false,
+          },
+        ],
+      });
+
+      // WHEN
+      const result = await readDirRecursive(mockFs, '/src');
+
+      // THEN - result should only have path, no content field
+      expect(result).toEqual([{ path: 'src/App.tsx' }]);
+      // Double-check: content key must not be present
+      expect(result[0]).not.toHaveProperty('content');
+    });
+
+    it('returns nested file entries without content field', async () => {
+      // GIVEN: nested structure
+      const mockFs = createMockFs({
+        '/src': [
+          {
+            name: 'components',
+            isFile: () => false,
+            isDirectory: () => true,
+            isSymbolicLink: () => false,
+          },
+        ],
+        '/src/components': [
+          {
+            name: 'App.tsx',
+            isFile: () => true,
+            isDirectory: () => false,
+            isSymbolicLink: () => false,
+          },
+        ],
+      });
+
+      // WHEN
+      const result = await readDirRecursive(mockFs, '/src');
+
+      // THEN - no file entry should have a content field
+      expect(result).toEqual([{ path: 'src/components/App.tsx' }]);
+      expect(result[0]).not.toHaveProperty('content');
+    });
+
+    it('returns multiple files all without content field', async () => {
+      // GIVEN: root with multiple files
+      const mockFs = createMockFs({
+        '/': [
+          {
+            name: 'index.html',
+            isFile: () => true,
+            isDirectory: () => false,
+            isSymbolicLink: () => false,
+          },
+          {
+            name: 'package.json',
+            isFile: () => true,
+            isDirectory: () => false,
+            isSymbolicLink: () => false,
+          },
+        ],
+      });
+
+      // WHEN
+      const result = await readDirRecursive(mockFs, '/');
+
+      // THEN - all files should have only path
+      expect(result).toEqual([{ path: 'index.html' }, { path: 'package.json' }]);
+      for (const file of result) {
+        expect(file).not.toHaveProperty('content');
+      }
     });
   });
 });

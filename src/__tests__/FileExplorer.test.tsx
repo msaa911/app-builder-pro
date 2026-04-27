@@ -300,7 +300,7 @@ describe('FileExplorer', () => {
 
   // ============ Phase 3: File selection (spec: FCREAT-003) ============
   describe('File selection', () => {
-    it('click on file item invokes onFileSelect with path and content', async () => {
+    it('click on file item invokes onFileSelect with path only (FCL-001 async loading)', async () => {
       const user = userEvent.setup();
       const onFileSelect = vi.fn();
       const files = [
@@ -317,7 +317,8 @@ describe('FileExplorer', () => {
       await user.click(screen.getByText('App.tsx'));
 
       expect(onFileSelect).toHaveBeenCalledTimes(1);
-      expect(onFileSelect).toHaveBeenCalledWith('src/App.tsx', 'export default function App() {}');
+      // onFileSelect now receives path only — content is loaded async by BuilderPage
+      expect(onFileSelect).toHaveBeenCalledWith('src/App.tsx');
     });
 
     it('selected file has visual highlight CSS class', async () => {
@@ -366,7 +367,7 @@ describe('FileExplorer', () => {
       await user.click(screen.getByText('index.ts'));
 
       expect(onFileSelect).toHaveBeenCalledTimes(1);
-      expect(onFileSelect).toHaveBeenCalledWith('src/index.ts', 'console.log("index")');
+      expect(onFileSelect).toHaveBeenCalledWith('src/index.ts');
     });
 
     it('clicking a folder still toggles expand/collapse without invoking onFileSelect', async () => {
@@ -408,8 +409,8 @@ describe('FileExplorer', () => {
       // Click on the file item
       await user.click(screen.getByText('App.tsx'));
 
-      // onFileSelect should be called with the file's path and content
-      expect(onFileSelect).toHaveBeenCalledWith('src/App.tsx', 'export default function App() {}');
+      // onFileSelect should be called with the file's path only
+      expect(onFileSelect).toHaveBeenCalledWith('src/App.tsx');
 
       // Parent folder should still be expanded — other file still visible
       expect(screen.getByText('utils.ts')).toBeInTheDocument();

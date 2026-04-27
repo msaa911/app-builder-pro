@@ -38,8 +38,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       <div className="monaco-wrapper" data-testid="monaco-wrapper">
         <Editor
           height="100%"
-          defaultLanguage={language}
-          defaultValue={code}
+          language={language}
+          value={code}
           theme="vs-dark"
           onChange={onChange}
           options={{

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { ConsoleLogType, ConsoleLog } from '../index';
+import type { ConsoleLogType, ConsoleLog, ProjectFile } from '../index';
 
 describe('ConsoleLog types', () => {
   it('ConsoleLogType should only accept valid log type values', () => {
@@ -36,5 +36,30 @@ describe('ConsoleLog types', () => {
 
     expect(logs).toHaveLength(4);
     expect(logs.map((l) => l.type)).toEqual(['info', 'success', 'warn', 'error']);
+  });
+});
+
+// FCL-002: ProjectFile.content is optional (lazy loading)
+describe('ProjectFile type', () => {
+  it('allows ProjectFile with only path (no content)', () => {
+    // Compile-time check: content is optional
+    const file: ProjectFile = { path: 'src/App.tsx' };
+
+    expect(file.path).toBe('src/App.tsx');
+    expect(file.content).toBeUndefined();
+  });
+
+  it('allows ProjectFile with path and content', () => {
+    const file: ProjectFile = { path: 'src/App.tsx', content: 'export default App' };
+
+    expect(file.path).toBe('src/App.tsx');
+    expect(file.content).toBe('export default App');
+  });
+
+  it('allows ProjectFile with empty content', () => {
+    const file: ProjectFile = { path: 'src/empty.ts', content: '' };
+
+    expect(file.path).toBe('src/empty.ts');
+    expect(file.content).toBe('');
   });
 });
