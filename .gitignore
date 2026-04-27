@@ -26,5 +26,8 @@ dist-ssr
 
 # Test coverage output
 coverage/
+coverage-*.txt
+test-output.txt
+test-results.json
 
 .vercel

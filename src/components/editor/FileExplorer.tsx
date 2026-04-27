@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Folder,
   File,
@@ -142,7 +142,10 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const creatingInputRef = useRef<HTMLInputElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
-  const tree = buildTree(files, creatingInPath, creatingType);
+  const tree = useMemo(
+    () => buildTree(files, creatingInPath, creatingType),
+    [files, creatingInPath, creatingType]
+  );
 
   // Auto-focus the creating input when it appears
   useEffect(() => {
