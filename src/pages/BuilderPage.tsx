@@ -29,6 +29,8 @@ import { adaptProject } from '../services/adapter';
 import SettingsModal from '../components/settings/SettingsModal';
 import { PipelineStage } from '../hooks/backend/pipeline/types';
 import { getGenericErrorMessage, logErrorSafe, logWarnSafe } from '../utils/logger';
+import { mergeFiles } from '../utils/mergeFiles';
+import { computeFileDiff, formatDiffSummary } from '../utils/fileDiff';
 import './BuilderPage.css';
 import '../components/common/Toast.css';
 
@@ -60,8 +62,8 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   const [lastError, setLastError] = useState<unknown>(null);
   const { getEffectiveApiKey, modelId } = useSettings();
 
-  const { generate } = useAIBuilder();
-  const { mount, install, runDev } = useWebContainer();
+  const { generate, refine } = useAIBuilder();
+  const { mount, install, runDev, updateFiles } = useWebContainer();
 
   // Backend creation hooks
   const { isAuthenticated } = useSupabaseOAuth();
@@ -104,6 +106,9 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   // Ref to track if initial prompt was already processed
   const initialPromptProcessed = useRef(false);
 
+  // Pre-refine snapshot for Undo (ITR-009)
+  const preRefineSnapshot = useRef<ProjectFile[] | null>(null);
+
   const handleNewMessage = useCallback(
     async (content: string) => {
       // Clear backend state before generating new code (RA-007)
@@ -121,12 +126,32 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
       setBuilderState('generating');
 
       try {
-        const response = await generate(content, getEffectiveApiKey(), modelId);
+        // ITR-002: Route between generate (first message) and refine (follow-ups)
+        const isRefine = currentFiles.length > 0;
+
+        let response;
+        if (isRefine) {
+          // ITR-009: Save pre-refine snapshot for Undo
+          preRefineSnapshot.current = [...currentFiles];
+          response = await refine(currentFiles, content, getEffectiveApiKey(), modelId);
+        } else {
+          response = await generate(content, getEffectiveApiKey(), modelId);
+        }
+
+        // Build assistant message content with optional diff summary (ITR-008)
+        let assistantContent = response.message;
+        if (isRefine && response.files && response.files.length > 0) {
+          const diffs = computeFileDiff(currentFiles, response.files);
+          const diffSummary = formatDiffSummary(diffs);
+          if (diffSummary) {
+            assistantContent = `${response.message}\n\n${diffSummary}`;
+          }
+        }
 
         const assistantMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: response.message,
+          content: assistantContent,
           files: response.files,
           timestamp: Date.now(),
         };
@@ -138,22 +163,74 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
         }
 
         if (response.files && response.files.length > 0) {
-          setCurrentFiles(response.files);
-          setActiveFile(
-            response.files.find((f) => f.path.includes('App.tsx')) || response.files[0]
-          );
+          if (isRefine) {
+            // ITR-005: Merge existing + incoming files (AI wins on collision)
+            const { merged, overwrittenPaths } = mergeFiles(currentFiles, response.files);
+            setCurrentFiles(merged);
+            setActiveFile(merged.find((f) => f.path.includes('App.tsx')) || merged[0]);
 
-          // Start WebContainer flow
-          setBuilderState('installing');
-          const tree = filesToTree(response.files);
-          await mount(tree);
-          await install(addLog);
-          await fileTree.refresh();
+            // PWU-002: Check if package.json changed → full remount
+            const hasPackageJson = response.files.some(
+              (f) => f.path === 'package.json' || f.path === '/package.json'
+            );
 
-          setBuilderState('running');
-          await runDev(addLog, (url) => {
-            setPreviewUrl(url);
-          });
+            if (hasPackageJson) {
+              // Full remount needed
+              setBuilderState('installing');
+              const tree = filesToTree(merged);
+              await mount(tree);
+              await install(addLog);
+              await fileTree.refresh();
+
+              setBuilderState('running');
+              await runDev(addLog, (url) => {
+                setPreviewUrl(url);
+              });
+            } else {
+              // PWU-001: Partial update — only write changed files
+              setBuilderState('installing');
+              await updateFiles(response.files);
+              await fileTree.refresh();
+
+              setBuilderState('running');
+            }
+
+            // ITR-007: Show overwrite warning toast with Undo action (ITR-009)
+            if (overwrittenPaths.length > 0) {
+              showToast({
+                message: `AI overwrote ${overwrittenPaths.length} file(s)`,
+                type: 'warn',
+                duration: 8000,
+                action: {
+                  label: 'Undo',
+                  callback: () => {
+                    if (preRefineSnapshot.current) {
+                      setCurrentFiles(preRefineSnapshot.current);
+                      preRefineSnapshot.current = null;
+                    }
+                  },
+                },
+              });
+            }
+          } else {
+            // First message — full mount path
+            setCurrentFiles(response.files);
+            setActiveFile(
+              response.files.find((f) => f.path.includes('App.tsx')) || response.files[0]
+            );
+
+            // Start WebContainer flow
+            setBuilderState('installing');
+            const tree = filesToTree(response.files);
+            await mount(tree);
+            await install(addLog);
+            await fileTree.refresh();
+
+            setBuilderState('running');
+            await runDev(addLog, (url) => {
+              setPreviewUrl(url);
+            });
+          }
         } else {
           setBuilderState('idle');
         }
@@ -163,10 +240,13 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
       }
     },
     [
+      currentFiles,
       generate,
+      refine,
       mount,
       install,
       runDev,
+      updateFiles,
       getEffectiveApiKey,
       modelId,
       resetBackend,
@@ -179,6 +259,14 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   const handleRetry = useCallback(() => {
     setBuilderState('idle');
     setLastError(null);
+  }, []);
+
+  // Handler for New Chat — clears state for fresh generate (ITR-006)
+  const handleNewChat = useCallback(() => {
+    setCurrentFiles([]);
+    setMessages([]);
+    setBuilderState('idle');
+    preRefineSnapshot.current = null;
   }, []);
 
   // Race guard counter for async file loads (FCL-004)
@@ -509,6 +597,7 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
               messages={messages}
               onSendMessage={handleNewMessage}
               isGenerating={builderState === 'generating' || builderState === 'installing'}
+              onNewChat={handleNewChat}
             />
           </Panel>
 

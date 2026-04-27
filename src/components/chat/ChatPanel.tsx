@@ -11,9 +11,15 @@ interface ChatPanelProps {
   messages: ChatMessage[];
   onSendMessage: (content: string) => void;
   isGenerating: boolean;
+  onNewChat?: () => void;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, isGenerating }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({
+  messages,
+  onSendMessage,
+  isGenerating,
+  onNewChat,
+}) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +54,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, isGenera
           <Bot size={18} className="icon-ai" />
           <span>AI Assistant</span>
         </div>
-        <button className="btn-new-chat">
+        <button className="btn-new-chat" onClick={onNewChat}>
           <Plus size={16} />
         </button>
       </div>

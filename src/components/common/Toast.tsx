@@ -11,7 +11,15 @@ import { X } from 'lucide-react';
 /**
  * Toast types for different visual styles
  */
-export type ToastType = 'info' | 'error' | 'success';
+export type ToastType = 'info' | 'error' | 'success' | 'warn';
+
+/**
+ * Toast action button configuration (ITR-007, ITR-009)
+ */
+export interface ToastAction {
+  label: string;
+  callback: () => void;
+}
 
 /**
  * Toast configuration
@@ -20,6 +28,7 @@ export interface ToastConfig {
   message: string;
   type: ToastType;
   duration?: number;
+  action?: ToastAction;
 }
 
 /**
@@ -28,6 +37,7 @@ export interface ToastConfig {
 interface ToastItem extends ToastConfig {
   id: number;
   isExiting: boolean;
+  action?: ToastAction;
 }
 
 /**
@@ -74,9 +84,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) =>
-      prev.map((toast) =>
-        toast.id === id ? { ...toast, isExiting: true } : toast
-      )
+      prev.map((toast) => (toast.id === id ? { ...toast, isExiting: true } : toast))
     );
 
     // Remove after animation
@@ -90,11 +98,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div className="toast-container" data-testid="toast-container">
         {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            toast={toast}
-            onDismiss={() => dismissToast(toast.id)}
-          />
+          <Toast key={toast.id} toast={toast} onDismiss={() => dismissToast(toast.id)} />
         ))}
       </div>
     </ToastContext.Provider>
@@ -104,13 +108,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 /**
  * Individual Toast Component
  */
-function Toast({
-  toast,
-  onDismiss,
-}: {
-  toast: ToastItem;
-  onDismiss: () => void;
-}) {
+function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
   useEffect(() => {
     if (toast.duration && toast.duration > 0) {
       const timer = setTimeout(onDismiss, toast.duration);
@@ -127,6 +125,18 @@ function Toast({
       data-testid={`toast-${toast.id}`}
     >
       <span className="toast-message">{toast.message}</span>
+      {toast.action && (
+        <button
+          className="toast-action"
+          onClick={() => {
+            toast.action!.callback();
+            onDismiss();
+          }}
+          aria-label={toast.action.label}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         className="toast-close"
         onClick={onDismiss}

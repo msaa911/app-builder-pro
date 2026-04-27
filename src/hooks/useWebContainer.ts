@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { WebContainerManager } from '../services/webcontainer/WebContainerManager';
-import type { FileSystemTree } from '../types';
+import type { FileSystemTree, ProjectFile } from '../types';
 
 interface UseWebContainerReturn {
   mount: (files: FileSystemTree) => Promise<void>;
   writeFile: (path: string, content: string) => Promise<void>;
+  updateFiles: (files: ProjectFile[]) => Promise<void>;
   install: (onLog?: (data: string) => void) => Promise<number | undefined>;
   runDev: (onLog?: (data: string) => void, onReady?: (url: string) => void) => Promise<void>;
   isReady: boolean;
@@ -31,6 +32,11 @@ export function useWebContainer(): UseWebContainerReturn {
     await wc.writeFile(path, content);
   }, []);
 
+  const updateFiles = useCallback(async (files: ProjectFile[]) => {
+    const wc = await WebContainerManager.getInstance();
+    await wc.updateFiles(files);
+  }, []);
+
   const install = useCallback(async (onLog?: (data: string) => void) => {
     const wc = await WebContainerManager.getInstance();
     return await wc.install(onLog);
@@ -44,5 +50,5 @@ export function useWebContainer(): UseWebContainerReturn {
     []
   );
 
-  return { mount, writeFile, install, runDev, isReady, error };
+  return { mount, writeFile, updateFiles, install, runDev, isReady, error };
 }
