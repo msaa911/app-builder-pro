@@ -7,15 +7,24 @@ import CodeEditor from '../components/editor/CodeEditor';
 // Mock at the @monaco-editor/react boundary as per design
 // Uses controlled props: language + value (not defaultLanguage + defaultValue) — CE-001
 vi.mock('@monaco-editor/react', () => ({
-  default: (props: any) => (
-    <div
-      data-testid="monaco-editor"
-      data-language={props.language}
-      data-value={props.value}
-      data-theme={props.theme}
-      data-onchange={props.onChange ? 'true' : 'false'}
-    />
-  ),
+  default: (props: any) => {
+    // Simulate onMount — CodeEditor now uses it for Ctrl+S binding
+    if (props.onMount) {
+      const mockEditor = { getValue: () => props.value || '', addCommand: vi.fn() };
+      const mockMonaco = { KeyMod: { CtrlCmd: 2048 }, KeyCode: { KeyS: 49 } };
+      props.onMount(mockEditor, mockMonaco);
+    }
+    return (
+      <div
+        data-testid="monaco-editor"
+        data-language={props.language}
+        data-value={props.value}
+        data-theme={props.theme}
+        data-onchange={props.onChange ? 'true' : 'false'}
+        data-onmount={props.onMount ? 'true' : 'false'}
+      />
+    );
+  },
 }));
 
 describe('CodeEditor', () => {
@@ -129,11 +138,12 @@ describe('CodeEditor', () => {
       expect(editor.getAttribute('data-onchange')).toBe('true');
     });
 
-    it('should not pass onChange to Monaco when not provided', () => {
+    it('should always pass onChange to Monaco for dirty tracking (ES-002)', () => {
       render(<CodeEditor />);
 
       const editor = screen.getByTestId('monaco-editor');
-      expect(editor.getAttribute('data-onchange')).toBe('false');
+      // CodeEditor now always provides onChange internally for dirty tracking
+      expect(editor.getAttribute('data-onchange')).toBe('true');
     });
   });
 

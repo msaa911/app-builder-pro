@@ -52,11 +52,50 @@
 .btn-save {
   color: var(--text-secondary);
   border: 1px solid var(--border);
+  transition: all 0.2s ease;
 }
 
 .btn-save:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
+}
+
+/* Dirty state — file has unsaved changes (ES-006) */
+.btn-save--dirty {
+  color: var(--accent-primary, #22d3ee);
+  border-color: var(--accent-primary, #22d3ee);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.btn-save--dirty:hover {
+  background: rgba(34, 211, 238, 0.15);
+}
+
+/* Saving state — write in progress (ES-007) */
+.btn-save--saving {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dirty indicator dot next to filename (ES-006) */
+.dirty-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary, #22d3ee);
+  display: inline-block;
+  margin-left: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .btn-run {

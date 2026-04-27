@@ -60,10 +60,14 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   const [isApplying, setIsApplying] = useState(false);
   const [_applyError, setApplyError] = useState<string | null>(null);
   const [lastError, setLastError] = useState<unknown>(null);
+  // Editor save state (ES-002, ES-007, ES-012)
+  const [isEditorDirty, setIsEditorDirty] = useState(false);
+  const [isSavingFile, setIsSavingFile] = useState(false);
+  const pendingFileSwitchRef = useRef<string | null>(null);
   const { getEffectiveApiKey, modelId } = useSettings();
 
   const { generate, refine } = useAIBuilder();
-  const { mount, install, runDev, updateFiles } = useWebContainer();
+  const { mount, install, runDev, updateFiles, writeFile } = useWebContainer();
 
   // Backend creation hooks
   const { isAuthenticated } = useSupabaseOAuth();
@@ -273,8 +277,31 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   const loadRequestRef = useRef(0);
 
   // Handler for file selection from FileExplorer (FCL-001, FCL-004)
+  // With unsaved changes guard (ES-012)
   const handleFileSelect = useCallback(
     async (path: string) => {
+      // Unsaved changes guard — warn and offer save (ES-012)
+      if (isEditorDirty && activeFile && path !== activeFile.path) {
+        pendingFileSwitchRef.current = path;
+        showToast({
+          message: `Unsaved changes in ${activeFile.path}`,
+          type: 'warn',
+          action: {
+            label: 'Save & Switch',
+            callback: () => {
+              // Save current file, then switch to pending
+              const currentContent = activeFile.content || '';
+              handleEditorSave({ path: activeFile.path, content: currentContent });
+              setIsEditorDirty(false);
+              const pendingPath = pendingFileSwitchRef.current;
+              pendingFileSwitchRef.current = null;
+              if (pendingPath) handleFileSelect(pendingPath);
+            },
+          },
+        });
+        return;
+      }
+
       const requestId = ++loadRequestRef.current;
 
       // Binary file check — skip readFile, set placeholder (FCL-003)
@@ -299,7 +326,64 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
         setActiveFile({ path, content: '// Error loading file content' });
       }
     },
-    [showToast]
+    [showToast, isEditorDirty, activeFile]
+  );
+
+  // Handler for editor onChange — updates activeFile only, NOT currentFiles (ES-008, D5)
+  const handleEditorChange = useCallback(
+    (value: string | undefined) => {
+      if (value !== undefined && activeFile) {
+        setActiveFile({ ...activeFile, content: value });
+      }
+    },
+    [activeFile]
+  );
+
+  // Handler for editor onSave — writes to WC, updates currentFiles, refreshes tree (ES-009, ES-010, ES-011)
+  const handleEditorSave = useCallback(
+    async (file: { path: string; content: string }) => {
+      // Race guard — don't write if WC is already writing (ES-013)
+      try {
+        const wcm = await WebContainerManager.getInstance();
+        if (wcm.isWriting) {
+          showToast({
+            message: 'WebContainer is busy writing. Try again in a moment.',
+            type: 'warn',
+          });
+          return;
+        }
+      } catch {
+        // WCM not available — proceed anyway, writeFile will handle it
+      }
+
+      setIsSavingFile(true);
+      try {
+        await writeFile(file.path, file.content);
+
+        // Update currentFiles to reflect saved state (ES-010)
+        setCurrentFiles((prev) =>
+          prev.map((f) => (f.path === file.path ? { ...f, content: file.content } : f))
+        );
+
+        // Update activeFile to reflect saved state (ES-010)
+        setActiveFile((prev) =>
+          prev && prev.path === file.path ? { ...prev, content: file.content } : prev
+        );
+
+        // Refresh file tree to pick up any WC-side changes (ES-011)
+        fileTree.refresh();
+
+        setIsEditorDirty(false);
+      } catch (error) {
+        showToast({
+          message: `Failed to save ${file.path}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          type: 'error',
+        });
+      } finally {
+        setIsSavingFile(false);
+      }
+    },
+    [writeFile, fileTree, showToast]
   );
 
   // Handler for creating new file/folder from FileExplorer (FCREAT-005)
@@ -657,6 +741,10 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
                         fileName={activeFile?.path || 'App.tsx'}
                         code={activeFile?.content || ''}
                         language={activeFile?.path.endsWith('.css') ? 'css' : 'typescript'}
+                        onChange={handleEditorChange}
+                        onSave={handleEditorSave}
+                        onDirtyChange={setIsEditorDirty}
+                        isSaving={isSavingFile}
                       />
                     </div>
                   )}
