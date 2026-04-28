@@ -276,32 +276,14 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   // Race guard counter for async file loads (FCL-004)
   const loadRequestRef = useRef(0);
 
-  // Handler for file selection from FileExplorer (FCL-001, FCL-004)
-  // With unsaved changes guard (ES-012)
-  const handleFileSelect = useCallback(
-    async (path: string) => {
-      // Unsaved changes guard — warn and offer save (ES-012)
-      if (isEditorDirty && activeFile && path !== activeFile.path) {
-        pendingFileSwitchRef.current = path;
-        showToast({
-          message: `Unsaved changes in ${activeFile.path}`,
-          type: 'warn',
-          action: {
-            label: 'Save & Switch',
-            callback: () => {
-              // Save current file, then switch to pending
-              const currentContent = activeFile.content || '';
-              handleEditorSave({ path: activeFile.path, content: currentContent });
-              setIsEditorDirty(false);
-              const pendingPath = pendingFileSwitchRef.current;
-              pendingFileSwitchRef.current = null;
-              if (pendingPath) handleFileSelect(pendingPath);
-            },
-          },
-        });
-        return;
-      }
+  // Ref for handleEditorSave — avoids stale closure in toast callbacks (ES-012)
+  const handleEditorSaveRef = useRef<
+    ((file: { path: string; content: string }) => Promise<void>) | null
+  >(null);
 
+  // Core file loading logic (no unsaved guard — called after guard is resolved)
+  const loadFile = useCallback(
+    async (path: string) => {
       const requestId = ++loadRequestRef.current;
 
       // Binary file check — skip readFile, set placeholder (FCL-003)
@@ -326,17 +308,7 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
         setActiveFile({ path, content: '// Error loading file content' });
       }
     },
-    [showToast, isEditorDirty, activeFile]
-  );
-
-  // Handler for editor onChange — updates activeFile only, NOT currentFiles (ES-008, D5)
-  const handleEditorChange = useCallback(
-    (value: string | undefined) => {
-      if (value !== undefined && activeFile) {
-        setActiveFile({ ...activeFile, content: value });
-      }
-    },
-    [activeFile]
+    [showToast]
   );
 
   // Handler for editor onSave — writes to WC, updates currentFiles, refreshes tree (ES-009, ES-010, ES-011)
@@ -384,6 +356,52 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
       }
     },
     [writeFile, fileTree, showToast]
+  );
+
+  // Keep ref in sync so toast callbacks always call the latest version
+  handleEditorSaveRef.current = handleEditorSave;
+
+  // Handler for editor onChange — updates activeFile only, NOT currentFiles (ES-008, D5)
+  const handleEditorChange = useCallback(
+    (value: string | undefined) => {
+      if (value !== undefined && activeFile) {
+        setActiveFile({ ...activeFile, content: value });
+      }
+    },
+    [activeFile]
+  );
+
+  // Handler for file selection from FileExplorer (FCL-001, FCL-004)
+  // With unsaved changes guard (ES-012)
+  const handleFileSelect = useCallback(
+    async (path: string) => {
+      // Unsaved changes guard — warn and offer save (ES-012)
+      if (isEditorDirty && activeFile && path !== activeFile.path) {
+        pendingFileSwitchRef.current = path;
+        showToast({
+          message: `Unsaved changes in ${activeFile.path}`,
+          type: 'warn',
+          action: {
+            label: 'Save & Switch',
+            callback: () => {
+              // Save current file via ref (avoids stale closure), then switch to pending
+              const currentContent = activeFile.content || '';
+              handleEditorSaveRef.current?.({ path: activeFile.path, content: currentContent });
+              setIsEditorDirty(false);
+              const pendingPath = pendingFileSwitchRef.current;
+              pendingFileSwitchRef.current = null;
+              // Call loadFile directly — bypasses unsaved guard since we just saved
+              if (pendingPath) loadFile(pendingPath);
+            },
+          },
+        });
+        return;
+      }
+
+      // No unsaved changes — load file directly
+      await loadFile(path);
+    },
+    [showToast, isEditorDirty, activeFile, loadFile]
   );
 
   // Handler for creating new file/folder from FileExplorer (FCREAT-005)

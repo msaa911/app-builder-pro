@@ -401,6 +401,48 @@ describe('BuilderPage — Editor Save Flow', () => {
         expect(screen.getByTestId('editor-is-saving').textContent).toBe('false');
       });
     });
+
+    it('should transition isSaving to true while writeFile is in progress', async () => {
+      const user = userEvent.setup();
+      mockReadFile.mockResolvedValue('content');
+
+      // Create a controlled promise so we can inspect isSaving mid-flight
+      let resolveWriteFile!: () => void;
+      mockWriteFile.mockReturnValue(
+        new Promise<void>((resolve) => {
+          resolveWriteFile = resolve;
+        })
+      );
+
+      render(<BuilderPage initialPrompt="" />);
+
+      const codeTab = screen.getByRole('button', { name: 'Code' });
+      await user.click(codeTab);
+
+      const fileBtn = screen.getByTestId('file-btn-src/App.tsx');
+      await user.click(fileBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-file-name').textContent).toBe('src/App.tsx');
+      });
+
+      // Trigger save — writeFile is pending
+      const saveTrigger = screen.getByTestId('editor-save-trigger');
+      await user.click(saveTrigger);
+
+      // isSaving should be true while writeFile is in progress
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-is-saving').textContent).toBe('true');
+      });
+
+      // Now resolve writeFile
+      resolveWriteFile();
+
+      // isSaving should go back to false
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-is-saving').textContent).toBe('false');
+      });
+    });
   });
 
   describe('onDirtyChange wired to CodeEditor (ES-002)', () => {
@@ -418,6 +460,97 @@ describe('BuilderPage — Editor Save Flow', () => {
 
       await waitFor(() => {
         expect(capturedEditorOnDirtyChange).not.toBeNull();
+      });
+    });
+  });
+
+  describe('currentFiles updated on save (ES-010)', () => {
+    it('should update currentFiles content after save — verified via writeFile receiving onChange content', async () => {
+      const user = userEvent.setup();
+      mockReadFile.mockResolvedValue('original content');
+
+      render(<BuilderPage initialPrompt="" />);
+
+      const codeTab = screen.getByRole('button', { name: 'Code' });
+      await user.click(codeTab);
+
+      const fileBtn = screen.getByTestId('file-btn-src/App.tsx');
+      await user.click(fileBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-file-name').textContent).toBe('src/App.tsx');
+      });
+
+      // 1. Simulate onChange — updates activeFile.content (ES-008)
+      const changeTrigger = screen.getByTestId('editor-change-trigger');
+      await user.click(changeTrigger);
+
+      // 2. Wait for activeFile to be updated (re-render with modified content)
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-code-content').textContent).toBe('modified content');
+      });
+
+      // 3. Trigger save — handleEditorSave receives the current code prop
+      const saveTrigger = screen.getByTestId('editor-save-trigger');
+      await user.click(saveTrigger);
+
+      // 4. Verify writeFile was called with the modified content
+      // This proves: onChange -> activeFile updated -> onSave receives updated content -> writeFile gets it
+      // AND handleEditorSave updates currentFiles (ES-010) before calling writeFile
+      await waitFor(() => {
+        expect(mockWriteFile).toHaveBeenCalledWith('src/App.tsx', 'modified content');
+      });
+    });
+  });
+
+  describe('Save & Switch callback end-to-end (ES-012)', () => {
+    it('should save the current file and switch to pending file when "Save & Switch" action is invoked', async () => {
+      const user = userEvent.setup();
+      mockReadFile.mockResolvedValue('original content');
+
+      render(<BuilderPage initialPrompt="" />);
+
+      const codeTab = screen.getByRole('button', { name: 'Code' });
+      await user.click(codeTab);
+
+      // 1. Load a file (src/App.tsx)
+      const appBtn = screen.getByTestId('file-btn-src/App.tsx');
+      await user.click(appBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-file-name').textContent).toBe('src/App.tsx');
+      });
+
+      // 2. Mark it dirty
+      const dirtyTrigger = screen.getByTestId('editor-dirty-trigger');
+      await user.click(dirtyTrigger);
+
+      // 3. Click another file — triggers unsaved guard toast
+      const utilsBtn = screen.getByTestId('file-btn-src/utils.ts');
+      await user.click(utilsBtn);
+
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warn' }));
+      });
+
+      // 4. Extract the toast action callback and invoke it
+      const toastCall = mockShowToast.mock.calls.find((call) => call[0].type === 'warn');
+      expect(toastCall).toBeDefined();
+      const saveAndSwitchCallback = toastCall![0].action.callback;
+
+      await act(async () => {
+        saveAndSwitchCallback();
+      });
+
+      // 5. Verify that writeFile was called (save happened)
+      await waitFor(() => {
+        expect(mockWriteFile).toHaveBeenCalled();
+      });
+
+      // 6. Verify file switch completed — editor shows the new file
+      // The recursive handleFileSelect call should load src/utils.ts
+      await waitFor(() => {
+        expect(screen.getByTestId('editor-file-name').textContent).toBe('src/utils.ts');
       });
     });
   });
