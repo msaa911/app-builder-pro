@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Sparkles,
   Share2,
@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { type BuilderState } from '../../types';
 import { QuotaStatus } from './QuotaStatus';
+import ProjectDropdown from './ProjectDropdown';
+import type { ProjectMeta } from '../../services/storage/types';
 import './TopBar.css';
 
 interface TopBarProps {
@@ -31,6 +33,13 @@ interface TopBarProps {
   isDeploying?: boolean;
   /** Callback when "Deploy to Vercel" button is clicked */
   onDeploy?: () => void;
+  /** Project persistence props */
+  projectList?: ProjectMeta[];
+  activeProjectId?: string | null;
+  onOpenProject?: (id: string) => Promise<unknown>;
+  onCreateProject?: (name?: string) => Promise<string>;
+  onDeleteProject?: (id: string) => Promise<void>;
+  onRenameProject?: (id: string, name: string) => Promise<void>;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -44,8 +53,18 @@ const TopBar: React.FC<TopBarProps> = ({
   isVercelAuthenticated = false,
   isDeploying = false,
   onDeploy,
+  projectList = [],
+  activeProjectId = null,
+  onOpenProject,
+  onCreateProject,
+  onDeleteProject,
+  onRenameProject,
 }) => {
   const isGenerating = state === 'generating' || state === 'installing';
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const handleToggleDropdown = useCallback(() => {
+    setIsProjectDropdownOpen((prev) => !prev);
+  }, []);
 
   // Determine backend button state
   const isButtonDisabled = !hasOAuthToken || !hasGeneratedCode || isCreatingBackend;
@@ -73,9 +92,22 @@ const TopBar: React.FC<TopBarProps> = ({
         <div className="logo-compact">
           <Sparkles className="logo-icon active" />
         </div>
-        <div className="project-info">
+        <div className="project-info" onClick={handleToggleDropdown}>
           <h1 className="project-name">{projectName}</h1>
-          <ChevronDown size={14} className="chevron" />
+          <ChevronDown size={14} className={`chevron ${isProjectDropdownOpen ? 'rotated' : ''}`} />
+          {onOpenProject && (
+            <ProjectDropdown
+              projectList={projectList}
+              activeProjectId={activeProjectId}
+              activeProjectName={projectName}
+              isOpen={isProjectDropdownOpen}
+              onToggle={handleToggleDropdown}
+              onOpenProject={onOpenProject}
+              onCreateProject={onCreateProject ?? (async () => '')}
+              onDeleteProject={onDeleteProject ?? (async () => {})}
+              onRenameProject={onRenameProject ?? (async () => {})}
+            />
+          )}
         </div>
         {state !== 'idle' && (
           <div className="status-badge fade-in">

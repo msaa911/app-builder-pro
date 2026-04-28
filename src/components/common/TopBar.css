@@ -52,6 +52,11 @@
 
 .chevron {
   color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.chevron.rotated {
+  transform: rotate(180deg);
 }
 
 .status-badge {

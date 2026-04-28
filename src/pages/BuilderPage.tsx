@@ -31,6 +31,7 @@ import { PipelineStage } from '../hooks/backend/pipeline/types';
 import { getGenericErrorMessage, logErrorSafe, logWarnSafe } from '../utils/logger';
 import { mergeFiles } from '../utils/mergeFiles';
 import { computeFileDiff, formatDiffSummary } from '../utils/fileDiff';
+import { useProjectPersistence } from '../hooks/useProjectPersistence';
 import './BuilderPage.css';
 import '../components/common/Toast.css';
 
@@ -107,12 +108,107 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
     abort: abortDeploy,
   } = useVercelDeploy();
 
+  // Project persistence hook (PP-003, PP-004, PP-005)
+  const persistence = useProjectPersistence();
+
   // Deploy modal state
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [showDeploySuccess, setShowDeploySuccess] = useState(false);
 
   // Ref to track if initial prompt was already processed
   const initialPromptProcessed = useRef(false);
+
+  // ── Project Persistence: Auto-save + beforeunload (PP-003, PP-004) ───
+
+  // Auto-save: debounced save on state changes (only when project is active)
+  useEffect(() => {
+    if (!persistence.activeProjectId) return;
+    if (currentFiles.length === 0 && messages.length === 0) return;
+
+    persistence.saveCurrentProject({
+      files: currentFiles,
+      messages,
+      activeFilePath: activeFile?.path ?? null,
+      builderState,
+      activeTab,
+      showExplorer,
+    });
+  }, [
+    currentFiles,
+    messages,
+    builderState,
+    activeFile?.path,
+    activeTab,
+    showExplorer,
+    persistence.activeProjectId,
+  ]);
+
+  // beforeunload: flush save immediately (no debounce) so data survives page close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!persistence.activeProjectId) return;
+      if (currentFiles.length === 0 && messages.length === 0) return;
+
+      // flushSave is async but beforeunload can't await — fire-and-forget is acceptable
+      // The IDB write will complete even if the page unloads (IDB transactions are durable)
+      persistence.flushSave({
+        files: currentFiles,
+        messages,
+        activeFilePath: activeFile?.path ?? null,
+        builderState,
+        activeTab,
+        showExplorer,
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [
+    persistence.activeProjectId,
+    currentFiles,
+    messages,
+    activeFile?.path,
+    builderState,
+    activeTab,
+    showExplorer,
+  ]);
+
+  // ── Project Persistence: Restore on mount (PP-004) ──────────────────
+
+  // Restore last active project on mount (only if no initialPrompt — fresh load)
+  const restoreAttempted = useRef(false);
+  useEffect(() => {
+    if (initialPrompt || restoreAttempted.current) return;
+    if (persistence.projectList.length === 0) return;
+
+    restoreAttempted.current = true;
+
+    // Find the most recently updated project (first in list = most recent)
+    const mostRecent = persistence.projectList[0];
+    if (!mostRecent) return;
+
+    persistence
+      .openProject(mostRecent.id)
+      .then((restoreData) => {
+        if (!restoreData) return;
+
+        // Restore state from IDB
+        setCurrentFiles(restoreData.currentFiles);
+        setMessages(restoreData.messages);
+        if (restoreData.activeFilePath) {
+          const found = restoreData.currentFiles.find((f) => f.path === restoreData.activeFilePath);
+          setActiveFile(found || restoreData.currentFiles[0] || null);
+        } else {
+          setActiveFile(restoreData.currentFiles[0] || null);
+        }
+        setBuilderState(restoreData.builderState as BuilderState);
+        setActiveTab(restoreData.activeTab as 'preview' | 'code');
+        setShowExplorer(restoreData.showExplorer);
+      })
+      .catch(() => {
+        // Silent fail — restore is best-effort
+      });
+  }, [initialPrompt, persistence.projectList]);
 
   // Pre-refine snapshot for Undo (ITR-009)
   const preRefineSnapshot = useRef<ProjectFile[] | null>(null);
@@ -229,6 +325,20 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
               response.files.find((f) => f.path.includes('App.tsx')) || response.files[0]
             );
 
+            // Auto-create project for persistence if none active (PP-001)
+            if (!persistence.activeProjectId) {
+              try {
+                const projectName = content.length > 30 ? content.slice(0, 30) + '…' : content;
+                await persistence.createProject(projectName);
+              } catch {
+                // Max projects reached or other error — continue without persistence
+                logWarnSafe(
+                  'BuilderPage',
+                  'Auto-create project failed — continuing without persistence'
+                );
+              }
+            }
+
             // Start WebContainer flow
             setBuilderState('installing');
             const tree = filesToTree(response.files);
@@ -264,6 +374,7 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
       resetBackend,
       showToast,
       fileTree.refresh,
+      persistence,
     ]
   );
 
@@ -745,7 +856,7 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   return (
     <div className="builder-container">
       <TopBar
-        projectName="App Builder Pro"
+        projectName={persistence.activeProjectName ?? 'App Builder Pro'}
         state={builderState}
         onOpenSettings={() => setIsSettingsOpen(true)}
         hasGeneratedCode={currentFiles.length > 0}
@@ -755,6 +866,12 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
         isVercelAuthenticated={isVercelAuthenticated}
         isDeploying={isDeploying}
         onDeploy={handleDeployClick}
+        projectList={persistence.projectList}
+        activeProjectId={persistence.activeProjectId}
+        onOpenProject={persistence.openProject}
+        onCreateProject={persistence.createProject}
+        onDeleteProject={persistence.deleteProject}
+        onRenameProject={persistence.renameProject}
       />
 
       <main className="builder-main">
