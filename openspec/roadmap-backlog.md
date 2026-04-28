@@ -1,8 +1,8 @@
 # App Builder Pro — Roadmap & Backlog
 
 **Last Updated**: 2026-04-28
-**Total Archived Changes**: 16
-**Tests**: 1552 passing | **Coverage**: 96%+ stmts | **tsc**: clean
+**Total Archived Changes**: 18
+**Tests**: 1665 passing | **Coverage**: 96%+ stmts | **tsc**: clean
 
 ---
 
@@ -26,41 +26,28 @@
 | 14 | pre-production-hardening | COMPLETE | 5 sub-changes (api-key-storage, chat-markdown, preview-sandbox, tailwind-support, code-parsing) |
 | 15 | chat-iterative-refine | COMPLETE | Iterative refinement via refineApp (24 tasks, 3 commits) |
 | 16 | editor-save-to-webcontainer | COMPLETE | Manual save with dirty tracking, Ctrl+S, WC write (46 tests, 3 commits) |
+| 17 | editor-run-to-webcontainer | COMPLETE | Run button → restartDev, isRunning/hasCrashed states, dev exit toast (11 tests) |
+| 18 | project-persistence | COMPLETE | IndexedDB persistence, 5 projects max, auto-save 2s debounce, restore on mount, ProjectDropdown UI (90 tests, commit 37d20f5) |
 
 ---
 
 ## Pending Features — Ordered by E2E Priority
 
-### 🔴 CRITICAL (Flujo E2E roto sin estos)
-
-#### 1. Code Editor Run → WebContainer Restart
-- **Problem**: Botón Run es un stub UI — no reinicia el preview
-- **Impact**: Los cambios no se reflejan sin recargar la página
-- **Complexity**: Baja
-- **Key Files**: `src/components/editor/CodeEditor.tsx`, `src/services/webcontainer/WebContainerManager.ts`
-- **SDD Change Name**: `editor-run-restart`
-
 ### 🟡 MEDIUM (UX incompleta)
 
-#### 2. Project Persistence (localStorage/IndexedDB)
-- **Problem**: Refresh de página pierde todo el proyecto
-- **Impact**: No hay proyecto real sin persistencia
-- **Complexity**: Media
-- **SDD Change Name**: `project-persistence`
-
-#### 3. Landing Page Links Vivos
+#### 1. Landing Page Links Vivos
 - **Problem**: Showcase, Templates, Sign In son dead links
 - **Impact**: UX básica rota en la landing
 - **Complexity**: Media
 - **SDD Change Name**: `landing-page-links`
 
-#### 4. TopBar Share Button
+#### 2. TopBar Share Button
 - **Problem**: Botón Share es dead UI
 - **Impact**: No se puede compartir proyecto por URL
 - **Complexity**: Media
 - **SDD Change Name**: `topbar-share`
 
-#### 5. Auth / User Accounts
+#### 3. Auth / User Accounts
 - **Problem**: No hay autenticación ni cuentas de usuario
 - **Impact**: Persistencia real y multi-usuario requieren auth
 - **Complexity**: Alta
@@ -68,23 +55,39 @@
 
 ### 🔵 LOW (Nice to have)
 
-#### 6. Version History / Undo
+#### 4. Version History / Undo
 - **Problem**: Sin historial de cambios ni undo de generación
 - **Impact**: Nice to have, no bloquea E2E
 - **Complexity**: Alta
 - **SDD Change Name**: `version-history-undo`
 
-#### 7. File Deletion & Rename in FileExplorer
+#### 5. File Deletion & Rename in FileExplorer
 - **Problem**: Solo se pueden crear archivos, no eliminar ni renombrar
 - **Impact**: UX polishing
 - **Complexity**: Baja
 - **SDD Change Name**: `file-deletion-rename`
 
-#### 8. Privacy Policy (10 TODOs legales)
+#### 6. Privacy Policy (10 TODOs legales)
 - **Problem**: 10 TODO comments en el texto legal
 - **Impact**: Legal, no funcional
 - **Complexity**: Baja
 - **SDD Change Name**: `privacy-policy-legal`
+
+### 🔧 DEFERRED (intentionally postponed)
+
+#### D1. WebContainer Auto-Boot on Restore
+- **Problem**: Restore no hace boot automático del WebContainer
+- **Impact**: Usuario debe hacer click en Run manualmente después de refresh
+- **Complexity**: Media
+- **Reason**: By-design — WC boot es pesado (~5-10s), solo bootear cuando el usuario lo pida
+- **SDD Change Name**: `wc-auto-boot-restore`
+
+#### D2. Performance Benchmark (Save < 100ms)
+- **Problem**: No hay test de benchmark para persistencia
+- **Impact**: No se verificó que save < 100ms para proyectos típicos
+- **Complexity**: Baja
+- **Reason**: Post-launch — idb es conocido por ser rápido (<10ms), pero no está medido
+- **SDD Change Name**: `persistence-perf-benchmark`
 
 ---
 
@@ -94,22 +97,22 @@
 Phase 1 — Critical E2E Flow:
 1.1 chat-iterative-refine → ✅ DONE
 1.2 editor-save-to-webcontainer → ✅ DONE
-1.3 editor-run-restart → cierra ciclo editar→ver
+1.3 editor-run-to-webcontainer → ✅ DONE (Run → restartDev)
 
 Phase 2 — Stability & UX:
-2.1 project-persistence → estabilidad del proyecto
-2.2 landing-page-links → UX básica
+2.1 project-persistence → ✅ DONE (IndexedDB, 5 projects, auto-save)
+2.2 landing-page-links → 🔲 NEXT — UX básica de la landing
 
 Phase 3 — Sharing & Auth:
-  3.1 auth-user-accounts       → base para features sociales
-  3.2 topbar-share             → compartir proyectos
+3.1 auth-user-accounts → base para features sociales
+3.2 topbar-share → compartir proyectos
 
 Phase 4 — Polish:
-  4.1 file-deletion-rename     → UX del editor
-  4.2 version-history-undo     → calidad de vida
-  4.3 privacy-policy-legal     → compliance
+4.1 file-deletion-rename → UX del editor
+4.2 version-history-undo → calidad de vida
+4.3 privacy-policy-legal → compliance
 
-E2E Playwright: configurar DESPUÉS de Phase 1 completa
+E2E Playwright: configurar DESPUÉS de Phase 2 completa
 ```
 
 ---
