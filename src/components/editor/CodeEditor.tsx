@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
-import { FileCode, Save, Zap } from 'lucide-react';
+import { FileCode, Save, Zap, RefreshCw } from 'lucide-react';
 import './CodeEditor.css';
 
 interface CodeEditorProps {
@@ -11,6 +11,9 @@ interface CodeEditorProps {
   onSave?: (file: { path: string; content: string }) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   isSaving?: boolean;
+  onRun?: () => void;
+  isRunning?: boolean;
+  hasCrashed?: boolean;
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -21,6 +24,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   onSave,
   onDirtyChange,
   isSaving = false,
+  onRun,
+  isRunning = false,
+  hasCrashed = false,
 }) => {
   const [isDirty, setIsDirty] = useState(false);
   const editorRef = useRef<any>(null);
@@ -81,9 +87,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             <Save size={14} />
             <span>{isSaving ? 'Saving...' : 'Save'}</span>
           </button>
-          <button className="btn-run" data-testid="btn-run">
-            <Zap size={14} />
-            <span>Run</span>
+          <button
+            className={`btn-run ${isRunning ? 'btn-run--running' : ''} ${hasCrashed ? 'btn-run--crashed' : ''}`}
+            data-testid="btn-run"
+            onClick={onRun}
+          >
+            {hasCrashed ? <RefreshCw size={14} /> : <Zap size={14} />}
+            <span>{isRunning ? 'Running' : hasCrashed ? 'Restart' : 'Run'}</span>
           </button>
         </div>
       </div>

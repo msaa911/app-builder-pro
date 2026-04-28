@@ -8,17 +8,26 @@ import type { ProjectFile } from '@/types';
 // ============================================
 
 // Use vi.hoisted to access the mocks after vi.mock is called
-const { mockContainer, mockBoot } = vi.hoisted(() => {
-  const mockProcess = {
-    output: {
-      pipeTo: vi.fn(),
-    },
-    exit: Promise.resolve(0) as Promise<number>,
+const { mockContainer, mockBoot, createMockProcess } = vi.hoisted(() => {
+  // Factory to create controlled dev processes with resolvable exit promises
+  const createMockProcess = () => {
+    let exitResolve!: (code: number) => void;
+    const exitPromise = new Promise<number>((resolve) => {
+      exitResolve = resolve;
+    });
+    return {
+      output: {
+        pipeTo: vi.fn(),
+      },
+      exit: exitPromise,
+      kill: vi.fn(),
+      _exitResolve: exitResolve,
+    };
   };
 
   const container = {
     mount: vi.fn().mockResolvedValue(undefined),
-    spawn: vi.fn().mockResolvedValue(mockProcess),
+    spawn: vi.fn().mockResolvedValue(createMockProcess()),
     fs: {
       readFile: vi.fn().mockResolvedValue(new TextEncoder().encode('file contents')),
       writeFile: vi.fn().mockResolvedValue(undefined),
@@ -32,6 +41,7 @@ const { mockContainer, mockBoot } = vi.hoisted(() => {
   return {
     mockContainer: container,
     mockBoot: vi.fn().mockResolvedValue(container),
+    createMockProcess,
   };
 });
 
@@ -240,13 +250,16 @@ describe('WebContainerManager', () => {
     it('runs npm install', async () => {
       // Given
       const manager = await WebContainerManager.getInstance();
+      const installProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(installProcess);
 
       // When
       const exitPromise = manager.install();
+      installProcess._exitResolve(0);
+      const exitCode = await exitPromise;
 
       // Then
       expect(mockContainer.spawn).toHaveBeenCalledWith('npm', ['install']);
-      const exitCode = await exitPromise;
       expect(exitCode).toBe(0);
     });
 
@@ -254,9 +267,13 @@ describe('WebContainerManager', () => {
       // Given
       const onLog = vi.fn();
       const manager = await WebContainerManager.getInstance();
+      const installProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(installProcess);
 
       // When
-      await manager.install(onLog);
+      const exitPromise = manager.install(onLog);
+      installProcess._exitResolve(0);
+      await exitPromise;
 
       // Then - onLog gets called through pipeTo
       expect(mockContainer.spawn).toHaveBeenCalledWith('npm', ['install']);
@@ -265,10 +282,14 @@ describe('WebContainerManager', () => {
     it('boots WebContainer if not already booted', async () => {
       // Given
       const manager = await WebContainerManager.getInstance();
+      const installProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(installProcess);
       mockContainer.spawn.mockClear();
 
       // When
-      await manager.install();
+      const exitPromise = manager.install();
+      installProcess._exitResolve(0);
+      await exitPromise;
 
       // Then
       expect(mockContainer.spawn).toHaveBeenCalledWith('npm', ['install']);
@@ -756,6 +777,162 @@ describe('WebContainerManager', () => {
       await expect(
         manager.updateFiles([{ path: '/src/App.tsx', content: 'code' }])
       ).rejects.toThrow('WebContainer is not booted');
+    });
+  });
+
+  // ============================================
+  // ER-006 to ER-010: Dev process lifecycle management
+  // ============================================
+  describe('dev process lifecycle', () => {
+    it('stores dev process reference after runDev() — isDevRunning becomes true', async () => {
+      // Given — ER-006
+      const mockProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(mockProcess);
+      const manager = await WebContainerManager.getInstance();
+
+      // When
+      await manager.runDev();
+
+      // Then — isDevRunning reflects stored process
+      expect(manager.isDevRunning).toBe(true);
+    });
+
+    it('killDev() calls kill() on stored dev process and sets isDevRunning=false', async () => {
+      // Given — ER-007
+      const mockProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(mockProcess);
+      const manager = await WebContainerManager.getInstance();
+      await manager.runDev();
+      expect(manager.isDevRunning).toBe(true);
+
+      // When
+      await manager.killDev();
+
+      // Then
+      expect(mockProcess.kill).toHaveBeenCalled();
+      expect(manager.isDevRunning).toBe(false);
+    });
+
+    it('killDev() is a no-op when no dev process is running', async () => {
+      // Given — ER-007 (no process running)
+      const manager = await WebContainerManager.getInstance();
+
+      // When — should not throw
+      await manager.killDev();
+
+      // Then — no error, isDevRunning still false
+      expect(manager.isDevRunning).toBe(false);
+    });
+
+    it('restartDev() kills old process and spawns new one', async () => {
+      // Given — ER-008
+      const oldProcess = createMockProcess();
+      const newProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(oldProcess);
+      mockContainer.spawn.mockResolvedValueOnce(newProcess);
+      const manager = await WebContainerManager.getInstance();
+      await manager.runDev();
+      expect(manager.isDevRunning).toBe(true);
+
+      // When
+      const result = await manager.restartDev();
+
+      // Then — old process killed, new process spawned
+      expect(oldProcess.kill).toHaveBeenCalled();
+      expect(mockContainer.spawn).toHaveBeenCalledTimes(2); // first runDev + restartDev
+      expect(manager.isDevRunning).toBe(true);
+    });
+
+    it('restartDev() calls onReady with new URL when server is ready', async () => {
+      // Given — ER-008
+      const newProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(newProcess);
+      const manager = await WebContainerManager.getInstance();
+      const onReady = vi.fn();
+
+      // When
+      await manager.restartDev(undefined, onReady);
+
+      // Then — trigger server-ready event
+      const serverReadyCallback = mockContainer.on.mock.calls.find(
+        (call: unknown[]) => call[0] === 'server-ready'
+      )?.[1] as ((port: number, url: string) => void) | undefined;
+      if (serverReadyCallback) {
+        serverReadyCallback(5173, 'http://localhost:5173');
+      }
+      expect(onReady).toHaveBeenCalledWith('http://localhost:5173');
+    });
+
+    it('isDevRunning getter returns false initially', async () => {
+      // Given — ER-010
+      const manager = await WebContainerManager.getInstance();
+
+      // Then
+      expect(manager.isDevRunning).toBe(false);
+    });
+
+    it('isDevRunning returns false after process exits', async () => {
+      // Given — ER-010 (via exit detection)
+      const mockProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(mockProcess);
+      const manager = await WebContainerManager.getInstance();
+      await manager.runDev();
+      expect(manager.isDevRunning).toBe(true);
+
+      // When — process exits
+      mockProcess._exitResolve(1);
+      // Wait for exit promise to resolve
+      await vi.waitFor(() => {
+        expect(manager.isDevRunning).toBe(false);
+      });
+    });
+
+    it('onDevExit callback is invoked when dev process exits with exit code', async () => {
+      // Given — ER-009
+      const mockProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(mockProcess);
+      const manager = await WebContainerManager.getInstance();
+      const onDevExit = vi.fn();
+      manager.onDevExit = onDevExit;
+
+      // When
+      await manager.runDev();
+      mockProcess._exitResolve(1);
+      await vi.waitFor(() => {
+        expect(onDevExit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    it('onDevExit callback is invoked with code 0 on clean exit', async () => {
+      // Given — ER-009
+      const mockProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(mockProcess);
+      const manager = await WebContainerManager.getInstance();
+      const onDevExit = vi.fn();
+      manager.onDevExit = onDevExit;
+
+      // When
+      await manager.runDev();
+      mockProcess._exitResolve(0);
+      await vi.waitFor(() => {
+        expect(onDevExit).toHaveBeenCalledWith(0);
+      });
+    });
+
+    it('killDev() clears the dev process reference so subsequent killDev() is no-op', async () => {
+      // Given — killDev should be idempotent
+      const mockProcess = createMockProcess();
+      mockContainer.spawn.mockResolvedValueOnce(mockProcess);
+      const manager = await WebContainerManager.getInstance();
+      await manager.runDev();
+      await manager.killDev();
+      expect(mockProcess.kill).toHaveBeenCalledTimes(1);
+
+      // When — killDev again
+      await manager.killDev();
+
+      // Then — kill still only called once (no double-kill)
+      expect(mockProcess.kill).toHaveBeenCalledTimes(1);
     });
   });
 });

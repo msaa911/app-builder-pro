@@ -1,4 +1,4 @@
-import { WebContainer } from '@webcontainer/api';
+import { WebContainer, type WebContainerProcess } from '@webcontainer/api';
 import type { IFSWatcher } from '@webcontainer/api';
 import { type FileSystemTree, type ProjectFile } from '../../types';
 import { logInfoSafe, logWarnSafe } from '../../utils/logger';
@@ -23,6 +23,9 @@ export class WebContainerManager {
   private static instance: WebContainerManager;
   private webcontainerInstance: WebContainer | null = null;
   private _isWriting: boolean = false;
+  private _devProcess: WebContainerProcess | null = null;
+  private _isDevRunning: boolean = false;
+  private _onDevExit?: (code: number) => void;
 
   private constructor() {}
 
@@ -86,7 +89,42 @@ export class WebContainerManager {
       onReady?.(url);
     });
 
+    // Store process ref and set up exit detection (ER-006, ER-009, ER-010)
+    this._devProcess = devProcess;
+    this._isDevRunning = true;
+
+    devProcess.exit.then((code) => {
+      this._isDevRunning = false;
+      this._devProcess = null;
+      this._onDevExit?.(code);
+    });
+
     return devProcess;
+  }
+
+  /** Whether the dev server process is currently running (ER-010) */
+  public get isDevRunning(): boolean {
+    return this._isDevRunning;
+  }
+
+  /** Callback invoked when the dev process exits — receives exit code (ER-009) */
+  public set onDevExit(cb: ((code: number) => void) | undefined) {
+    this._onDevExit = cb;
+  }
+
+  /** Kill the running dev process (ER-007). No-op if no process is running. */
+  public async killDev(): Promise<void> {
+    if (this._devProcess) {
+      this._devProcess.kill();
+      this._isDevRunning = false;
+      this._devProcess = null;
+    }
+  }
+
+  /** Restart the dev process: kill old + spawn new (ER-008) */
+  public async restartDev(onLog?: (data: string) => void, onReady?: (url: string) => void) {
+    await this.killDev();
+    return this.runDev(onLog, onReady);
   }
 
   /** Whether WCM is currently performing a writeFile — used by watcher to skip circular refreshes */

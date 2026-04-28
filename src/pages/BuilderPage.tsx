@@ -67,7 +67,11 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
   const { getEffectiveApiKey, modelId } = useSettings();
 
   const { generate, refine } = useAIBuilder();
-  const { mount, install, runDev, updateFiles, writeFile } = useWebContainer();
+  const { mount, install, runDev, updateFiles, writeFile, restartDev } = useWebContainer();
+
+  // Dev process state (ER-002, ER-005, ER-010)
+  const [isDevRunning, setIsDevRunning] = useState(false);
+  const [hasDevCrashed, setHasDevCrashed] = useState(false);
 
   // Backend creation hooks
   const { isAuthenticated } = useSupabaseOAuth();
@@ -187,6 +191,8 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
               await fileTree.refresh();
 
               setBuilderState('running');
+              setIsDevRunning(true);
+              setHasDevCrashed(false);
               await runDev(addLog, (url) => {
                 setPreviewUrl(url);
               });
@@ -231,6 +237,8 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
             await fileTree.refresh();
 
             setBuilderState('running');
+            setIsDevRunning(true);
+            setHasDevCrashed(false);
             await runDev(addLog, (url) => {
               setPreviewUrl(url);
             });
@@ -360,6 +368,62 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
 
   // Keep ref in sync so toast callbacks always call the latest version
   handleEditorSaveRef.current = handleEditorSave;
+
+  // Ref for onDevExit callback — avoids stale closure for showToast in singleton callback (ER-009)
+  const onDevExitRef = useRef<((code: number) => void) | null>(null);
+
+  // Wire onDevExit to WebContainerManager singleton (ER-009)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const wcm = await WebContainerManager.getInstance();
+        if (cancelled) return;
+        wcm.onDevExit = (code: number) => {
+          onDevExitRef.current?.(code);
+        };
+      } catch {
+        // WCM not available — nothing to wire
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Handler for dev process exit — updates state + shows toast (ER-005, ER-006)
+  const handleDevExit = useCallback(
+    (code: number) => {
+      setIsDevRunning(false);
+      if (code !== 0) {
+        setHasDevCrashed(true);
+        showToast({
+          message: 'Dev server stopped unexpectedly. Click Run to restart.',
+          type: 'error',
+        });
+      } else {
+        setHasDevCrashed(false);
+      }
+    },
+    [showToast]
+  );
+
+  // Keep ref in sync so onDevExit singleton always calls the latest version
+  onDevExitRef.current = handleDevExit;
+
+  // Handler for Run button — restarts dev process (ER-001, ER-008)
+  const handleRun = useCallback(async () => {
+    setIsDevRunning(true);
+    setHasDevCrashed(false);
+    try {
+      await restartDev(addLog, (url) => {
+        setPreviewUrl(url);
+      });
+    } catch {
+      setIsDevRunning(false);
+      setHasDevCrashed(true);
+    }
+  }, [restartDev, addLog]);
 
   // Handler for editor onChange — updates activeFile only, NOT currentFiles (ES-008, D5)
   const handleEditorChange = useCallback(
@@ -641,6 +705,8 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
       await mount(tree);
       await install(addLog);
       await fileTree.refresh();
+      setIsDevRunning(true);
+      setHasDevCrashed(false);
       await runDev(addLog, (url) => {
         setPreviewUrl(url);
       });
@@ -763,6 +829,9 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
                         onSave={handleEditorSave}
                         onDirtyChange={setIsEditorDirty}
                         isSaving={isSavingFile}
+                        onRun={handleRun}
+                        isRunning={isDevRunning}
+                        hasCrashed={hasDevCrashed}
                       />
                     </div>
                   )}

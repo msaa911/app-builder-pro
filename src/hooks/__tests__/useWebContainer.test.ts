@@ -16,6 +16,7 @@ const mockWebContainerManager = {
   writeFile: vi.fn(),
   install: vi.fn(),
   runDev: vi.fn(),
+  restartDev: vi.fn(),
   boot: vi.fn(),
 };
 
@@ -57,7 +58,7 @@ describe('useWebContainer', () => {
 
     // When
     const { result } = renderHook(() => useWebContainer());
-    
+
     await act(async () => {
       await result.current.mount(files);
     });
@@ -77,7 +78,7 @@ describe('useWebContainer', () => {
 
     // When
     const { result } = renderHook(() => useWebContainer());
-    
+
     let caughtError: Error | undefined;
     await act(async () => {
       try {
@@ -101,7 +102,7 @@ describe('useWebContainer', () => {
 
     // When
     const { result } = renderHook(() => useWebContainer());
-    
+
     await act(async () => {
       await result.current.writeFile(filePath, content);
     });
@@ -119,7 +120,7 @@ describe('useWebContainer', () => {
 
     // When
     const { result } = renderHook(() => useWebContainer());
-    
+
     let returnedCode: number | undefined;
     await act(async () => {
       returnedCode = await result.current.install(onLog);
@@ -140,7 +141,7 @@ describe('useWebContainer', () => {
 
     // When
     const { result } = renderHook(() => useWebContainer());
-    
+
     await act(async () => {
       await result.current.runDev(onLog, onReady);
     });
@@ -152,11 +153,39 @@ describe('useWebContainer', () => {
   // ============ RED - Test: cleanup on unmount ============
   it('cleanup does not throw on unmount', () => {
     // Given
-    
+
     // When
     const { result, unmount } = renderHook(() => useWebContainer());
-    
+
     // Then - should not throw
     expect(() => unmount()).not.toThrow();
+  });
+
+  // ============ ER-008: restartDev delegates to WCM.restartDev ============
+  it('restartDev calls WCM.restartDev with callbacks', async () => {
+    // Given
+    const processMock = { output: { pipeTo: vi.fn() } };
+    mockWebContainerManager.restartDev.mockResolvedValue(processMock);
+    const onLog = vi.fn();
+    const onReady = vi.fn();
+
+    // When
+    const { result } = renderHook(() => useWebContainer());
+
+    await act(async () => {
+      await result.current.restartDev(onLog, onReady);
+    });
+
+    // Then
+    expect(mockWebContainerManager.restartDev).toHaveBeenCalledWith(onLog, onReady);
+  });
+
+  it('restartDev is exposed in hook return type', () => {
+    // Given
+    const { result } = renderHook(() => useWebContainer());
+
+    // Then — restartDev function exists in the return
+    expect(result.current.restartDev).toBeDefined();
+    expect(typeof result.current.restartDev).toBe('function');
   });
 });

@@ -8,6 +8,7 @@ interface UseWebContainerReturn {
   updateFiles: (files: ProjectFile[]) => Promise<void>;
   install: (onLog?: (data: string) => void) => Promise<number | undefined>;
   runDev: (onLog?: (data: string) => void, onReady?: (url: string) => void) => Promise<void>;
+  restartDev: (onLog?: (data: string) => void, onReady?: (url: string) => void) => Promise<void>;
   isReady: boolean;
   error: Error | null;
 }
@@ -50,5 +51,13 @@ export function useWebContainer(): UseWebContainerReturn {
     []
   );
 
-  return { mount, writeFile, updateFiles, install, runDev, isReady, error };
+  const restartDev = useCallback(
+    async (onLog?: (data: string) => void, onReady?: (url: string) => void) => {
+      const wc = await WebContainerManager.getInstance();
+      await wc.restartDev(onLog, onReady);
+    },
+    []
+  );
+
+  return { mount, writeFile, updateFiles, install, runDev, restartDev, isReady, error };
 }
