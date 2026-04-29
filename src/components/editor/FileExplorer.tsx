@@ -23,6 +23,7 @@ interface FileExplorerProps {
   selectedPath?: string;
   onNewItem?: (item: { parentPath: string; name: string; type: 'file' | 'folder' }) => void;
   onDeleteItem?: (item: { path: string; type: 'file' | 'folder' }) => void;
+  onRenameItem?: (item: { path: string; newName: string }) => void;
 }
 
 interface TreeNode {
@@ -121,6 +122,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   selectedPath,
   onNewItem,
   onDeleteItem,
+  onRenameItem,
 }) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [creatingInPath, setCreatingInPath] = useState<string | null>(null);
@@ -139,7 +141,11 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     itemName: '',
   });
   const [creatingValue, setCreatingValue] = useState('');
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const isRenamingRef = useRef(false);
   const creatingInputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const tree = useMemo(
@@ -153,6 +159,20 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       creatingInputRef.current.focus();
     }
   }, [creatingInPath]);
+
+  // Auto-focus the rename input when it appears (FREN-002, NFR-002)
+  useEffect(() => {
+    if (renamingPath !== null && renameInputRef.current) {
+      renameInputRef.current.focus();
+      // Select name without extension for files (NFR-002)
+      const lastDot = renameValue.lastIndexOf('.');
+      if (lastDot > 0) {
+        renameInputRef.current.setSelectionRange(0, lastDot);
+      } else {
+        renameInputRef.current.select();
+      }
+    }
+  }, [renamingPath, renameValue]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -245,6 +265,44 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     setConfirmDialog({ isOpen: false, itemPath: '', itemType: 'file', itemName: '' });
   };
 
+  // ── Rename handlers (FREN-002 to FREN-005, FREN-011) ────────
+  const handleStartRename = (itemPath: string, itemName: string) => {
+    setRenamingPath(itemPath);
+    setRenameValue(itemName);
+    isRenamingRef.current = true;
+    setContextMenu(null);
+  };
+
+  const validateRenameName = (name: string): string | null => {
+    if (!name || !name.trim()) return 'Name cannot be empty';
+    if (name.includes('/')) return 'Name cannot contain "/"';
+    if (name === '.' || name === '..') return 'Name cannot be "." or ".."';
+    return null;
+  };
+
+  const handleRenameConfirm = () => {
+    if (!isRenamingRef.current) return; // guard against double-confirm
+    isRenamingRef.current = false;
+    if (renamingPath === null) return;
+    const trimmed = renameValue.trim();
+    const validationError = validateRenameName(trimmed);
+    if (validationError) {
+      // Cancel rename on invalid name — same as Escape
+      setRenamingPath(null);
+      setRenameValue('');
+      return;
+    }
+    onRenameItem?.({ path: renamingPath, newName: trimmed });
+    setRenamingPath(null);
+    setRenameValue('');
+  };
+
+  const handleRenameCancel = () => {
+    isRenamingRef.current = false;
+    setRenamingPath(null);
+    setRenameValue('');
+  };
+
   const renderTree = (
     nodes: TreeNode[],
     depth: number = 0,
@@ -311,17 +369,37 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
             }
             style={item.type === 'folder' ? { cursor: 'pointer' } : undefined}
           >
-            {item.type === 'folder' ? (
-              <>
-                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                <Folder size={14} className="folder-icon" />
-              </>
-            ) : (
-              <File size={14} className="file-icon" />
-            )}
-            <span className="item-name" data-testid="item-name">
-              {item.name}
-            </span>
+        {item.type === 'folder' ? (
+          <>
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            <Folder size={14} className="folder-icon" />
+          </>
+        ) : (
+          <File size={14} className="file-icon" />
+        )}
+        {renamingPath === fullPath ? (
+          <input
+            ref={renameInputRef}
+            data-testid="rename-input"
+            className="rename-input"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleRenameConfirm();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handleRenameCancel();
+              }
+            }}
+            onBlur={handleRenameConfirm}
+          />
+        ) : (
+          <span className="item-name" data-testid="item-name">
+            {item.name}
+          </span>
+        )}
           </div>
 
           {item.type === 'folder' && isExpanded && item.children && (
@@ -411,9 +489,19 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   New Folder
                 </div>
               </>
-            )}
-            <div
-              className="context-menu-item context-menu-item--danger"
+)}
+<div
+  className="context-menu-item"
+  data-testid="context-menu-rename"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleStartRename(contextMenu.folderPath, contextMenu.itemName ?? '');
+  }}
+>
+  Rename
+</div>
+<div
+  className="context-menu-item context-menu-item--danger"
               data-testid="context-menu-delete"
               onClick={(e) => {
                 e.stopPropagation();

@@ -208,6 +208,20 @@ export class WebContainerManager {
     }
   }
 
+  /** Rename a file or folder (FREN-006, NFR-001) */
+  public async rename(oldPath: string, newPath: string): Promise<void> {
+    this.requireBooted();
+    if (PROTECTED_PATHS.includes(oldPath)) {
+      throw new Error(`Cannot rename protected path: ${oldPath}`);
+    }
+    this._isWriting = true;
+    try {
+      await this.webcontainerInstance!.fs.rename(oldPath, newPath);
+    } finally {
+      this._isWriting = false;
+    }
+  }
+
   public async readFile(path: string): Promise<string> {
     if (!this.webcontainerInstance) {
       await this.boot();

@@ -883,8 +883,222 @@ describe('FileExplorer', () => {
         await user.click(backdrop as Element);
       }
 
-      // onDeleteItem should not have been called
-      expect(onDeleteItem).not.toHaveBeenCalled();
+  // onDeleteItem should not have been called
+  expect(onDeleteItem).not.toHaveBeenCalled();
+  });
+  });
+
+  // ============ Phase 6: File Rename UI (spec: FREN-001 to FREN-011) ============
+  describe('File rename — context menu', () => {
+    it('right-click on file shows context menu with Rename option (FREN-001)', async () => {
+      const user = userEvent.setup();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} />);
+
+      // Expand src to reveal the file
+      await user.click(screen.getByText('src'));
+
+      // Find the file row
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      expect(utilRow).toBeDefined();
+
+      // Right-click on the file
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+
+      // Context menu should have Rename option
+      expect(screen.getByTestId('context-menu-rename')).toBeInTheDocument();
+      expect(screen.getByText('Rename')).toBeInTheDocument();
+    });
+
+    it('right-click on folder shows context menu with Rename option (FREN-001)', async () => {
+      const user = userEvent.setup();
+      const files = [{ path: 'src/App.tsx', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} />);
+
+      // Right-click on src folder
+      const folderRows = container.querySelectorAll('[data-testid="item-row"][data-type="folder"]');
+      const srcRow = Array.from(folderRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'src'
+      );
+      expect(srcRow).toBeDefined();
+
+      await user.pointer({ keys: '[MouseRight]', target: srcRow! });
+
+      expect(screen.getByTestId('context-menu-rename')).toBeInTheDocument();
     });
   });
-});
+
+  describe('File rename — inline input', () => {
+    it('clicking Rename in context menu shows inline input pre-populated with current name (FREN-002)', async () => {
+      const user = userEvent.setup();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+
+      // Click Rename in context menu
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Inline rename input should appear with current name
+      const renameInput = screen.getByTestId('rename-input');
+      expect(renameInput).toBeInTheDocument();
+      expect(renameInput).toHaveValue('utils.ts');
+    });
+
+    it('pressing Enter confirms rename and calls onRenameItem (FREN-003)', async () => {
+      const user = userEvent.setup();
+      const onRenameItem = vi.fn();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} onRenameItem={onRenameItem} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Use fireEvent for precise input control (avoid blur-on-clear issues with userEvent)
+      const renameInput = screen.getByTestId('rename-input');
+      fireEvent.change(renameInput, { target: { value: 'helpers.ts' } });
+      fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+      expect(onRenameItem).toHaveBeenCalledTimes(1);
+      expect(onRenameItem).toHaveBeenCalledWith({ path: 'src/utils.ts', newName: 'helpers.ts' });
+    });
+
+    it('pressing Escape cancels rename without calling onRenameItem (FREN-004)', async () => {
+      const user = userEvent.setup();
+      const onRenameItem = vi.fn();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} onRenameItem={onRenameItem} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Press Escape
+      await user.keyboard('{Escape}');
+
+      expect(onRenameItem).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('rename-input')).not.toBeInTheDocument();
+    });
+
+    it('empty name cancels rename without calling onRenameItem (FREN-005)', async () => {
+      const user = userEvent.setup();
+      const onRenameItem = vi.fn();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} onRenameItem={onRenameItem} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Set empty value and press Enter
+      const renameInput = screen.getByTestId('rename-input');
+      fireEvent.change(renameInput, { target: { value: '' } });
+      fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+      expect(onRenameItem).not.toHaveBeenCalled();
+    });
+
+    it('name with slash cancels rename (FREN-005)', async () => {
+      const user = userEvent.setup();
+      const onRenameItem = vi.fn();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} onRenameItem={onRenameItem} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Type a name with slash
+      const renameInput = screen.getByTestId('rename-input');
+      fireEvent.change(renameInput, { target: { value: 'bad/name.ts' } });
+      fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+      expect(onRenameItem).not.toHaveBeenCalled();
+    });
+
+    it('dot-only name cancels rename (FREN-005)', async () => {
+      const user = userEvent.setup();
+      const onRenameItem = vi.fn();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} onRenameItem={onRenameItem} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Clear and type ".."
+      const renameInput = screen.getByTestId('rename-input');
+      fireEvent.change(renameInput, { target: { value: '..' } });
+      fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+      expect(onRenameItem).not.toHaveBeenCalled();
+    });
+
+    it('blur on rename input confirms rename (FREN-011)', async () => {
+      const user = userEvent.setup();
+      const onRenameItem = vi.fn();
+      const files = [{ path: 'src/utils.ts', content: '' }];
+
+      const { container } = render(<FileExplorer files={files} onRenameItem={onRenameItem} />);
+
+      await user.click(screen.getByText('src'));
+
+      const fileRows = container.querySelectorAll('[data-testid="item-row"][data-type="file"]');
+      const utilRow = Array.from(fileRows).find(
+        (row) => row.querySelector('[data-testid="item-name"]')?.textContent === 'utils.ts'
+      );
+      await user.pointer({ keys: '[MouseRight]', target: utilRow! });
+      await user.click(screen.getByTestId('context-menu-rename'));
+
+      // Change value and trigger blur
+      const renameInput = screen.getByTestId('rename-input');
+      fireEvent.change(renameInput, { target: { value: 'helpers.ts' } });
+      fireEvent.blur(renameInput);
+
+      expect(onRenameItem).toHaveBeenCalledWith({ path: 'src/utils.ts', newName: 'helpers.ts' });
+    });
+  });
+  });

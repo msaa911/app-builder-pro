@@ -15,6 +15,7 @@ export interface UseFileTreeReturn {
   createFile: (fullPath: string) => Promise<string>;
   createFolder: (fullPath: string) => Promise<string>;
   deleteItem: (fullPath: string, type: 'file' | 'folder') => Promise<void>;
+  renameItem: (oldPath: string, newPath: string) => Promise<void>;
 }
 
 export function useFileTree(): UseFileTreeReturn {
@@ -244,5 +245,28 @@ export function useFileTree(): UseFileTreeReturn {
     []
   );
 
-  return { files, isLoading, error, refresh, createFile, createFolder, deleteItem };
+  const renameItem = useCallback(
+    async (oldPath: string, newPath: string): Promise<void> => {
+      // Protected paths validation — defense in depth (WCM also checks)
+      if (PROTECTED_PATHS.includes(oldPath)) {
+        throw new Error(`Cannot rename protected path: ${oldPath}`);
+      }
+
+      const wcm = wcmRef.current;
+      if (!wcm) {
+        throw new Error('WebContainer is not ready');
+      }
+
+      try {
+        await wcm.rename(oldPath, newPath);
+      } catch (err) {
+        logWarnSafe('useFileTree', `Failed to rename "${oldPath}" → "${newPath}": ${(err as Error).message}`);
+        setError(err as Error);
+        throw err;
+      }
+    },
+    []
+  );
+
+  return { files, isLoading, error, refresh, createFile, createFolder, deleteItem, renameItem };
 }

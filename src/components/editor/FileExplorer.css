@@ -117,6 +117,19 @@
   font-style: italic;
 }
 
+/* Inline rename input (FREN-002, NFR-002) */
+.rename-input {
+  background: var(--bg-secondary, #1e1e1e);
+  border: 1px solid var(--accent-primary, #3b82f6);
+  border-radius: 3px;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+  max-width: 140px;
+}
+
 /* Context menu */
 .context-menu {
   position: fixed;

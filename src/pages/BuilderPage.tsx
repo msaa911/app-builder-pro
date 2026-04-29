@@ -657,6 +657,38 @@ const BuilderPageInner: React.FC = () => {
     [activeFile, fileTree, showToast]
   );
 
+  // Handler for renaming file/folder from FileExplorer (FREN-007, FREN-008, FREN-009, FREN-010)
+  const handleRenameItem = useCallback(
+    async (item: { path: string; newName: string }) => {
+      // Construct new path: same parent dir + new name
+      const lastSlash = item.path.lastIndexOf('/');
+      const parentDir = lastSlash >= 0 ? item.path.slice(0, lastSlash) : '';
+      const newPath = parentDir ? `${parentDir}/${item.newName}` : item.newName;
+
+      try {
+        await fileTree.renameItem(item.path, newPath);
+        // Update activeFile if the renamed item is currently open (FREN-007)
+        if (activeFile) {
+          if (activeFile.path === item.path) {
+            setActiveFile({ ...activeFile, path: newPath });
+          } else if (activeFile.path.startsWith(item.path + '/')) {
+            // Renamed a parent folder — update the full path (FREN-010)
+            setActiveFile({
+              ...activeFile,
+              path: newPath + activeFile.path.slice(item.path.length),
+            });
+          }
+        }
+      } catch (error) {
+        showToast({
+          message: error instanceof Error ? error.message : 'Unknown error',
+          type: 'error',
+        });
+      }
+    },
+    [activeFile, fileTree, showToast]
+  );
+
   // Auto-select newly created file after tree refresh (FCREAT-005)
   useEffect(() => {
     if (!newlyCreatedPath) return;
@@ -982,8 +1014,9 @@ const BuilderPageInner: React.FC = () => {
                           onFileSelect={handleFileSelect}
                           selectedPath={activeFile?.path}
                           onNewItem={handleNewItem}
-                          onDeleteItem={handleDeleteItem}
-                        />
+        onDeleteItem={handleDeleteItem}
+        onRenameItem={handleRenameItem}
+      />
                       )}
                       <CodeEditor
                         fileName={activeFile?.path || 'App.tsx'}
