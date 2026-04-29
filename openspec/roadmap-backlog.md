@@ -1,8 +1,8 @@
 # App Builder Pro — Roadmap & Backlog
 
 **Last Updated**: 2026-04-29
-**Total Archived Changes**: 19
-**Tests**: 1729 passing | **Coverage**: 96%+ stmts | **tsc**: clean
+**Total Archived Changes**: 20
+**Tests**: 1748 passing | **Coverage**: 96%+ stmts | **tsc**: clean
 
 ---
 
@@ -29,6 +29,7 @@
 | 17 | editor-run-to-webcontainer | COMPLETE | Run button → restartDev, isRunning/hasCrashed states, dev exit toast (11 tests) |
 | 18 | project-persistence | COMPLETE | IndexedDB persistence, 5 projects max, auto-save 2s debounce, restore on mount, ProjectDropdown UI (90 tests, commit 37d20f5) |
 | 19 | landing-page-links | COMPLETE | react-router-dom, ShowcasePage, TemplatesPage (6 templates), SignInModal, BuilderPage route-aware (54 tests across 7 files) |
+| 20 | topbar-share | COMPLETE | Share button with clipboard copy, copied feedback (2s), disabled guard, toast success/error (12 tests: 7 unit + 5 integration, commit 6ae30e8) |
 
 ---
 
@@ -48,6 +49,7 @@
 - **Impact**: No se puede compartir proyecto por URL
 - **Complexity**: Media
 - **SDD Change Name**: `topbar-share`
+- **Status**: ✅ COMPLETE — Share button with clipboard copy, 2s copied feedback, disabled when no project, toast success/error (12 tests, commit 6ae30e8)
 
 #### 3. Auth / User Accounts
 - **Problem**: No hay autenticación ni cuentas de usuario
@@ -106,8 +108,8 @@ Phase 2 — Stability & UX:
 2.2 landing-page-links → ✅ DONE (react-router-dom, ShowcasePage, TemplatesPage, SignInModal, BuilderPage route-aware)
 
 Phase 3 — Sharing & Auth:
-3.1 auth-user-accounts → base para features sociales
-3.2 topbar-share → compartir proyectos
+3.1 topbar-share → ✅ DONE (clipboard copy + copied feedback)
+3.2 auth-user-accounts → base para features sociales
 
 Phase 4 — Polish:
 4.1 file-deletion-rename → UX del editor
