@@ -1,8 +1,8 @@
 # App Builder Pro — Roadmap & Backlog
 
 **Last Updated**: 2026-04-29
-**Total Archived Changes**: 20
-**Tests**: 1748 passing | **Coverage**: 96%+ stmts | **tsc**: clean
+**Total Archived Changes**: 21
+**Tests**: 1761 passing | **Coverage**: 96%+ stmts | **tsc**: clean
 
 ---
 
@@ -30,6 +30,7 @@
 | 18 | project-persistence | COMPLETE | IndexedDB persistence, 5 projects max, auto-save 2s debounce, restore on mount, ProjectDropdown UI (90 tests, commit 37d20f5) |
 | 19 | landing-page-links | COMPLETE | react-router-dom, ShowcasePage, TemplatesPage (6 templates), SignInModal, BuilderPage route-aware (54 tests across 7 files) |
 | 20 | topbar-share | COMPLETE | Share button with clipboard copy, copied feedback (2s), disabled guard, toast success/error (12 tests: 7 unit + 5 integration, commit 6ae30e8) |
+| 21 | file-rename | COMPLETE | File/folder rename via context menu → inline input → WC fs.rename, protected path guard, activeFile path update (13 tests: 9 unit + 4 integration, commit 755a193) |
 
 ---
 
@@ -70,6 +71,7 @@
 - **Impact**: UX polishing
 - **Complexity**: Baja
 - **SDD Change Name**: `file-deletion-rename`
+- **Status**: ✅ COMPLETE — Rename implemented (FREN-001→FREN-011), Delete was already complete. Context menu → inline rename input → WC fs.rename, protected path guard, activeFile path update on rename (13 tests, commit 755a193)
 
 #### 6. Privacy Policy (10 TODOs legales)
 - **Problem**: 10 TODO comments en el texto legal
