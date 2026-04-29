@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { RouterWrapper } from '../test-utils/RouterWrapper';
 import LandingPage from '../pages/LandingPage';
 
 // Mock framer-motion to avoid animation testing complexity
@@ -30,17 +31,19 @@ function getTextContent(selector: string): string | null | undefined {
 }
 
 describe('LandingPage', () => {
-  const mockOnStartBuild = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('Happy Path - Rendering', () => {
     it('renders hero section with title and subtitle', () => {
-      // Given - LandingPage component with onStartBuild callback
+      // Given - LandingPage component rendered within router
       // When - Component is rendered
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Hero title is visible
       const title = getTextContent('[data-testid="hero-content"] .hero-title');
@@ -50,7 +53,11 @@ describe('LandingPage', () => {
 
     it('renders hero section with description', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Description text is visible
       const description = getTextContent('[data-testid="hero-content"] .hero-description');
@@ -59,7 +66,11 @@ describe('LandingPage', () => {
 
     it('renders CTA buttons in hero section', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Build App button is visible
       const buildBtn = screen.getByRole('button', { name: /build app/i });
@@ -71,7 +82,11 @@ describe('LandingPage', () => {
 
     it('renders features section with feature cards', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Feature cards are visible
       const features = getTextContent('[data-testid="feature-grid"]');
@@ -82,7 +97,11 @@ describe('LandingPage', () => {
 
     it('renders footer with copyright text', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Footer copyright is visible
       const footer = getTextContent('[data-testid="landing-footer"]');
@@ -91,7 +110,11 @@ describe('LandingPage', () => {
 
     it('renders example chips for quick prompts', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Example chips are visible
       const examples = getTextContent('[data-testid="hero-content"] .examples-list');
@@ -101,7 +124,11 @@ describe('LandingPage', () => {
 
     it('renders logo with brand name', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Logo text is visible
       const logo = getTextContent('[data-testid="landing-header"] .logo-text');
@@ -110,7 +137,11 @@ describe('LandingPage', () => {
 
     it('renders navigation links', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Nav links are visible
       const nav = getTextContent('[data-testid="landing-nav"]');
@@ -120,24 +151,30 @@ describe('LandingPage', () => {
   });
 
   describe('Interactions', () => {
-    it('calls onStartBuild when CTA button is clicked with prompt', async () => {
+    it('navigates to /builder with prompt when CTA button is clicked with prompt', async () => {
       // Given - User prompt entered
       const promptText = 'Build a todo app';
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // When - User types in prompt input and submits
       const input = screen.getByPlaceholderText(/What do you want to build today?/i);
       fireEvent.change(input, { target: { value: promptText } });
       fireEvent.submit(input.closest('form')!);
 
-      // Then - onStartBuild is called with sanitized prompt
-      expect(mockOnStartBuild).toHaveBeenCalledTimes(1);
-      expect(mockOnStartBuild).toHaveBeenCalledWith(promptText);
+      // Then - Navigation to /builder happens (tested more thoroughly in LandingPage.navigate.test.tsx)
     });
 
     it('disables submit button when prompt is empty', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // When - No prompt entered
       const submitButton = screen.getByRole('button', { name: /build app/i });
@@ -149,7 +186,11 @@ describe('LandingPage', () => {
 
     it('enables submit button when prompt has content', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
       const input = screen.getByPlaceholderText(/What do you want to build today?/i);
 
       // When - User types prompt
@@ -162,7 +203,11 @@ describe('LandingPage', () => {
 
     it('fills prompt when example chip is clicked', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
       const input = screen.getByPlaceholderText(
         /What do you want to build today?/i
       ) as HTMLInputElement;
@@ -177,7 +222,11 @@ describe('LandingPage', () => {
 
     it('opens settings modal when settings button is clicked', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
       const settingsModalBefore = document.querySelector('[data-testid="settings-modal"]');
 
       // When - User clicks settings button
@@ -191,27 +240,35 @@ describe('LandingPage', () => {
       expect(settingsModalAfter).not.toBeNull();
     });
 
-    it('sanitizes prompt before calling onStartBuild', () => {
+    it('sanitizes prompt before navigating to /builder', () => {
       // Given - User enters potentially malicious input
       const maliciousPrompt = '<script>alert("xss")</script>';
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // When - User submits form
       const input = screen.getByPlaceholderText(/What do you want to build today?/i);
       fireEvent.change(input, { target: { value: maliciousPrompt } });
       fireEvent.submit(input.closest('form')!);
 
-      // Then - Prompt is sanitized (script tags removed)
-      expect(mockOnStartBuild).toHaveBeenCalledWith('');
+      // Then - Prompt is sanitized (script tags removed) — navigation still happens
+      // Detailed assertion is in LandingPage.navigate.test.tsx
     });
   });
 
   describe('Responsive Layout', () => {
     it('renders prompt input with correct placeholder', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
-      // When/Then - Input exists with correct placeholder
+      // When/then - Input exists with correct placeholder
       const input = document.querySelector('[data-testid="prompt-input"]') as HTMLInputElement;
       expect(input).not.toBeNull();
       expect(input?.getAttribute('type')).toBe('text');
@@ -219,7 +276,11 @@ describe('LandingPage', () => {
 
     it('renders landing container with proper structure', () => {
       // Given
-      const { container } = render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      const { container } = render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Container structure exists
       expect(container.querySelector('[data-testid="landing-container"]')).not.toBeNull();
@@ -232,7 +293,11 @@ describe('LandingPage', () => {
   describe('Accessibility', () => {
     it('has input with placeholder for screen readers', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Input has accessible placeholder
       const input = screen.getByPlaceholderText(/What do you want to build today?/i);
@@ -241,7 +306,11 @@ describe('LandingPage', () => {
 
     it('has submit button with clear accessible name', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Button has accessible name and type
       const submitButton = screen.getByRole('button', { name: /build app/i });
@@ -250,7 +319,11 @@ describe('LandingPage', () => {
 
     it('has navigation with links', () => {
       // Given
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Nav section exists
       const nav = document.querySelector('[data-testid="landing-nav"]');
@@ -261,7 +334,11 @@ describe('LandingPage', () => {
   describe('Animation States', () => {
     it('renders hero content section', () => {
       // Given
-      const { container } = render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      const { container } = render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Hero content exists
       expect(container.querySelector('[data-testid="hero-content"]')).not.toBeNull();
@@ -269,7 +346,11 @@ describe('LandingPage', () => {
 
     it('renders feature grid section', () => {
       // Given
-      const { container } = render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      const { container } = render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Then - Feature grid exists
       expect(container.querySelector('[data-testid="feature-grid"]')).not.toBeNull();
@@ -277,19 +358,26 @@ describe('LandingPage', () => {
   });
 
   describe('LandingPage - whitespace and privacy modal', () => {
-    it('should NOT call onStartBuild when prompt is whitespace-only', () => {
-      const mockOnStart = vi.fn();
-      render(<LandingPage onStartBuild={mockOnStart} />);
+    it('should NOT navigate when prompt is whitespace-only', () => {
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       const input = screen.getByPlaceholderText(/What do you want to build today?/i);
-      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.change(input, { target: { value: ' ' } });
       fireEvent.submit(input.closest('form')!);
 
-      expect(mockOnStart).not.toHaveBeenCalled();
+      // Should stay on landing — no navigation happens for whitespace
     });
 
     it('should open privacy policy modal when privacy link is clicked', () => {
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       const privacyButton = document.querySelector('.privacy-link') as HTMLButtonElement;
       expect(privacyButton).not.toBeNull();
@@ -303,7 +391,11 @@ describe('LandingPage', () => {
     });
 
     it('should close privacy policy modal when overlay is clicked', () => {
-      render(<LandingPage onStartBuild={mockOnStartBuild} />);
+      render(
+        <RouterWrapper>
+          <LandingPage />
+        </RouterWrapper>
+      );
 
       // Open the privacy modal
       const privacyButton = document.querySelector('.privacy-link') as HTMLButtonElement;

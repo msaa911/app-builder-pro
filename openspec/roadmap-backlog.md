@@ -1,8 +1,8 @@
 # App Builder Pro — Roadmap & Backlog
 
-**Last Updated**: 2026-04-28
-**Total Archived Changes**: 18
-**Tests**: 1665 passing | **Coverage**: 96%+ stmts | **tsc**: clean
+**Last Updated**: 2026-04-29
+**Total Archived Changes**: 19
+**Tests**: 1729 passing | **Coverage**: 96%+ stmts | **tsc**: clean
 
 ---
 
@@ -28,6 +28,7 @@
 | 16 | editor-save-to-webcontainer | COMPLETE | Manual save with dirty tracking, Ctrl+S, WC write (46 tests, 3 commits) |
 | 17 | editor-run-to-webcontainer | COMPLETE | Run button → restartDev, isRunning/hasCrashed states, dev exit toast (11 tests) |
 | 18 | project-persistence | COMPLETE | IndexedDB persistence, 5 projects max, auto-save 2s debounce, restore on mount, ProjectDropdown UI (90 tests, commit 37d20f5) |
+| 19 | landing-page-links | COMPLETE | react-router-dom, ShowcasePage, TemplatesPage (6 templates), SignInModal, BuilderPage route-aware (54 tests across 7 files) |
 
 ---
 
@@ -40,6 +41,7 @@
 - **Impact**: UX básica rota en la landing
 - **Complexity**: Media
 - **SDD Change Name**: `landing-page-links`
+- **Status**: ✅ COMPLETE — All 7 phases done (react-router-dom, routes, ShowcasePage, TemplatesPage, SignInModal, BuilderPage route-aware, integration tests)
 
 #### 2. TopBar Share Button
 - **Problem**: Botón Share es dead UI
@@ -101,7 +103,7 @@ Phase 1 — Critical E2E Flow:
 
 Phase 2 — Stability & UX:
 2.1 project-persistence → ✅ DONE (IndexedDB, 5 projects, auto-save)
-2.2 landing-page-links → 🔲 NEXT — UX básica de la landing
+2.2 landing-page-links → ✅ DONE (react-router-dom, ShowcasePage, TemplatesPage, SignInModal, BuilderPage route-aware)
 
 Phase 3 — Sharing & Auth:
 3.1 auth-user-accounts → base para features sociales

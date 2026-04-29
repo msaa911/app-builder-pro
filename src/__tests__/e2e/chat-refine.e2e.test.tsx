@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import BuilderPage from '../../pages/BuilderPage';
 
 // ===== Mock Toast System =====
@@ -277,7 +278,11 @@ describe('E2E: Chat Iterative Refine', () => {
       mockRunDev.mockResolvedValue(undefined);
       mockUpdateFiles.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -349,7 +354,11 @@ describe('E2E: Chat Iterative Refine', () => {
       mockRunDev.mockResolvedValue(undefined);
       mockUpdateFiles.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -401,7 +410,11 @@ describe('E2E: Chat Iterative Refine', () => {
       mockRunDev.mockResolvedValue(undefined);
       mockUpdateFiles.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -462,7 +475,11 @@ describe('E2E: Chat Iterative Refine', () => {
       mockRunDev.mockResolvedValue(undefined);
       mockUpdateFiles.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -529,7 +546,11 @@ describe('E2E: Chat Iterative Refine', () => {
         overwrittenPaths: ['src/App.tsx'],
       });
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -620,7 +641,11 @@ describe('E2E: Chat Iterative Refine', () => {
         overwrittenPaths: ['src/App.tsx'],
       });
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -697,7 +722,11 @@ describe('E2E: Chat Iterative Refine', () => {
       mockRunDev.mockResolvedValue(undefined);
       mockUpdateFiles.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
       const newChatBtn = screen.getByTestId('new-chat-btn');
@@ -769,7 +798,11 @@ describe('E2E: Chat Iterative Refine', () => {
       mockRunDev.mockResolvedValue(undefined);
       mockUpdateFiles.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
       const newChatBtn = screen.getByTestId('new-chat-btn');
@@ -857,7 +890,11 @@ describe('E2E: Chat Iterative Refine', () => {
         overwrittenPaths: ['src/App.tsx'],
       });
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const sendBtn = screen.getByTestId('send-message-btn');
       const newChatBtn = screen.getByTestId('new-chat-btn');

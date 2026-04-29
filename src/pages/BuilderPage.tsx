@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import { useParams, useLocation } from 'react-router-dom';
 import TopBar from '../components/common/TopBar';
 import ChatPanel from '../components/chat/ChatPanel';
 import PreviewPanel from '../components/preview/PreviewPanel';
@@ -35,14 +36,14 @@ import { useProjectPersistence } from '../hooks/useProjectPersistence';
 import './BuilderPage.css';
 import '../components/common/Toast.css';
 
-interface BuilderPageProps {
-  initialPrompt: string;
-}
-
 /**
  * Inner component that uses toast
  */
-const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
+const BuilderPageInner: React.FC = () => {
+  const { projectId } = useParams<{ projectId?: string }>();
+  const location = useLocation();
+  // Route state provides prompt via navigate('/builder', { state: { prompt } })
+  const initialPrompt = (location.state as any)?.prompt ?? '';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [builderState, setBuilderState] = useState<BuilderState>('idle');
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
@@ -173,12 +174,44 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
     showExplorer,
   ]);
 
+  // ── Project Persistence: Open by projectId from URL (LPL-012) ────────
+
+  // When projectId is in the URL, open that specific project (takes priority over generic restore)
+  const projectIdRestoreAttempted = useRef(false);
+  useEffect(() => {
+    if (!projectId || projectIdRestoreAttempted.current) return;
+
+    projectIdRestoreAttempted.current = true;
+
+    persistence
+      .openProject(projectId)
+      .then((restoreData) => {
+        if (!restoreData) return;
+
+        // Restore state from IDB
+        setCurrentFiles(restoreData.currentFiles);
+        setMessages(restoreData.messages);
+        if (restoreData.activeFilePath) {
+          const found = restoreData.currentFiles.find((f) => f.path === restoreData.activeFilePath);
+          setActiveFile(found || restoreData.currentFiles[0] || null);
+        } else {
+          setActiveFile(restoreData.currentFiles[0] || null);
+        }
+        setBuilderState(restoreData.builderState as BuilderState);
+        setActiveTab(restoreData.activeTab as 'preview' | 'code');
+        setShowExplorer(restoreData.showExplorer);
+      })
+      .catch(() => {
+        // Silent fail — project open is best-effort
+      });
+  }, [projectId, persistence]);
+
   // ── Project Persistence: Restore on mount (PP-004) ──────────────────
 
-  // Restore last active project on mount (only if no initialPrompt — fresh load)
+  // Restore last active project on mount (only if no initialPrompt AND no projectId — fresh load)
   const restoreAttempted = useRef(false);
   useEffect(() => {
-    if (initialPrompt || restoreAttempted.current) return;
+    if (initialPrompt || projectId || restoreAttempted.current) return;
     if (persistence.projectList.length === 0) return;
 
     restoreAttempted.current = true;
@@ -208,7 +241,7 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
       .catch(() => {
         // Silent fail — restore is best-effort
       });
-  }, [initialPrompt, persistence.projectList]);
+  }, [initialPrompt, projectId, persistence.projectList]);
 
   // Pre-refine snapshot for Undo (ITR-009)
   const preRefineSnapshot = useRef<ProjectFile[] | null>(null);
@@ -1002,10 +1035,10 @@ const BuilderPageInner: React.FC<BuilderPageProps> = ({ initialPrompt }) => {
 /**
  * Main BuilderPage component with ToastProvider wrapper
  */
-const BuilderPage: React.FC<BuilderPageProps> = (props) => {
+const BuilderPage: React.FC = () => {
   return (
     <ToastProvider>
-      <BuilderPageInner {...props} />
+      <BuilderPageInner />
     </ToastProvider>
   );
 };

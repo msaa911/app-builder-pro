@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import TopBar from '../TopBar';
+import { RouterWrapper } from '../../../test-utils/RouterWrapper';
 import type { BuilderState } from '../../../types';
 
 // Mock lucide-react icons
@@ -38,7 +39,11 @@ describe('TopBar', () => {
 
   describe('Create Backend Button - Disabled States', () => {
     it('should be disabled when no code has been generated (hasGeneratedCode=false)', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={false} hasOAuthToken={true} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={false} hasOAuthToken={true} />
+        </RouterWrapper>
+      );
 
       const button = document.querySelector(
         '[data-testid="btn-create-backend"]'
@@ -49,7 +54,11 @@ describe('TopBar', () => {
     });
 
     it('should be disabled when no OAuth token (hasOAuthToken=false)', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={true} hasOAuthToken={false} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={true} hasOAuthToken={false} />
+        </RouterWrapper>
+      );
 
       const button = document.querySelector(
         '[data-testid="btn-create-backend"]'
@@ -60,7 +69,11 @@ describe('TopBar', () => {
     });
 
     it('should prioritize "no code" message over "no OAuth" when both conditions are true', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={false} hasOAuthToken={false} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={false} hasOAuthToken={false} />
+        </RouterWrapper>
+      );
 
       const button = document.querySelector(
         '[data-testid="btn-create-backend"]'
@@ -73,7 +86,11 @@ describe('TopBar', () => {
 
   describe('Create Backend Button - Enabled State', () => {
     it('should be enabled when code exists AND OAuth token exists', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={true} hasOAuthToken={true} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={true} hasOAuthToken={true} />
+        </RouterWrapper>
+      );
 
       const button = document.querySelector(
         '[data-testid="btn-create-backend"]'
@@ -87,12 +104,14 @@ describe('TopBar', () => {
   describe('Create Backend Button - Loading State', () => {
     it('should show spinner and "Creating..." text when isCreatingBackend=true', () => {
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          hasOAuthToken={true}
-          isCreatingBackend={true}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            hasOAuthToken={true}
+            isCreatingBackend={true}
+          />
+        </RouterWrapper>
       );
 
       const button = document.querySelector(
@@ -113,12 +132,14 @@ describe('TopBar', () => {
 
     it('should be disabled while creating backend', () => {
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          hasOAuthToken={true}
-          isCreatingBackend={true}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            hasOAuthToken={true}
+            isCreatingBackend={true}
+          />
+        </RouterWrapper>
       );
 
       const button = document.querySelector(
@@ -129,12 +150,14 @@ describe('TopBar', () => {
 
     it('should show correct tooltip while creating', () => {
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          hasOAuthToken={true}
-          isCreatingBackend={true}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            hasOAuthToken={true}
+            isCreatingBackend={true}
+          />
+        </RouterWrapper>
       );
 
       const button = document.querySelector(
@@ -148,12 +171,14 @@ describe('TopBar', () => {
     it('should call onCreateBackend callback when button is clicked', () => {
       const onCreateBackend = vi.fn();
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          hasOAuthToken={true}
-          onCreateBackend={onCreateBackend}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            hasOAuthToken={true}
+            onCreateBackend={onCreateBackend}
+          />
+        </RouterWrapper>
       );
 
       const button = document.querySelector(
@@ -167,12 +192,14 @@ describe('TopBar', () => {
     it('should not call onCreateBackend when button is disabled (no code)', () => {
       const onCreateBackend = vi.fn();
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={false}
-          hasOAuthToken={true}
-          onCreateBackend={onCreateBackend}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={false}
+            hasOAuthToken={true}
+            onCreateBackend={onCreateBackend}
+          />
+        </RouterWrapper>
       );
 
       const button = document.querySelector(
@@ -186,12 +213,14 @@ describe('TopBar', () => {
     it('should not call onCreateBackend when button is disabled (no OAuth)', () => {
       const onCreateBackend = vi.fn();
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          hasOAuthToken={false}
-          onCreateBackend={onCreateBackend}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            hasOAuthToken={false}
+            onCreateBackend={onCreateBackend}
+          />
+        </RouterWrapper>
       );
 
       const button = document.querySelector(
@@ -205,7 +234,11 @@ describe('TopBar', () => {
 
   describe('Create Backend Button - Default Props', () => {
     it('should have correct defaults when optional props not provided', () => {
-      render(<TopBar {...defaultProps} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} />
+        </RouterWrapper>
+      );
 
       const button = document.querySelector(
         '[data-testid="btn-create-backend"]'
@@ -219,7 +252,11 @@ describe('TopBar', () => {
 
   describe('Deploy to Vercel Button', () => {
     it('should render deploy button', () => {
-      render(<TopBar {...defaultProps} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} />
+        </RouterWrapper>
+      );
 
       const deployBtn = document.querySelector(
         '[data-testid="btn-deploy-vercel"]'
@@ -228,7 +265,11 @@ describe('TopBar', () => {
     });
 
     it('should be disabled when no code has been generated', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={false} isVercelAuthenticated={true} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={false} isVercelAuthenticated={true} />
+        </RouterWrapper>
+      );
 
       const deployBtn = document.querySelector(
         '[data-testid="btn-deploy-vercel"]'
@@ -238,7 +279,11 @@ describe('TopBar', () => {
     });
 
     it('should show login tooltip when not Vercel authenticated', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={true} isVercelAuthenticated={false} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={true} isVercelAuthenticated={false} />
+        </RouterWrapper>
+      );
 
       const deployBtn = document.querySelector(
         '[data-testid="btn-deploy-vercel"]'
@@ -247,7 +292,11 @@ describe('TopBar', () => {
     });
 
     it('should be enabled when code exists and authenticated with Vercel', () => {
-      render(<TopBar {...defaultProps} hasGeneratedCode={true} isVercelAuthenticated={true} />);
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} hasGeneratedCode={true} isVercelAuthenticated={true} />
+        </RouterWrapper>
+      );
 
       const deployBtn = document.querySelector(
         '[data-testid="btn-deploy-vercel"]'
@@ -258,12 +307,14 @@ describe('TopBar', () => {
 
     it('should show spinner and "Deploying..." text when isDeploying=true', () => {
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          isVercelAuthenticated={true}
-          isDeploying={true}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            isVercelAuthenticated={true}
+            isDeploying={true}
+          />
+        </RouterWrapper>
       );
 
       const deployBtn = document.querySelector(
@@ -277,12 +328,14 @@ describe('TopBar', () => {
     it('should call onDeploy callback when button is clicked', () => {
       const onDeploy = vi.fn();
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={true}
-          isVercelAuthenticated={true}
-          onDeploy={onDeploy}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={true}
+            isVercelAuthenticated={true}
+            onDeploy={onDeploy}
+          />
+        </RouterWrapper>
       );
 
       const deployBtn = document.querySelector(
@@ -296,12 +349,14 @@ describe('TopBar', () => {
     it('should not call onDeploy when button is disabled', () => {
       const onDeploy = vi.fn();
       render(
-        <TopBar
-          {...defaultProps}
-          hasGeneratedCode={false}
-          isVercelAuthenticated={true}
-          onDeploy={onDeploy}
-        />
+        <RouterWrapper>
+          <TopBar
+            {...defaultProps}
+            hasGeneratedCode={false}
+            isVercelAuthenticated={true}
+            onDeploy={onDeploy}
+          />
+        </RouterWrapper>
       );
 
       const deployBtn = document.querySelector(

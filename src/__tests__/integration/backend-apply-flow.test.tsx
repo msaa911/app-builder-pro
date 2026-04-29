@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import React from 'react';
 import BuilderPage from '../../pages/BuilderPage';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import * as SettingsContext from '../../contexts/SettingsContext';
 import * as useAIBuilderModule from '../../hooks/useAIBuilder';
 import * as useWebContainerModule from '../../hooks/useWebContainer';
@@ -300,7 +301,6 @@ describe('E2E Backend Apply Flow', () => {
   describe('T-036: Happy Path - Full Flow', () => {
     it('should complete full flow: create backend → see credentials → apply → preview works', async () => {
       // GIVEN: User has generated React code in BuilderPage
-      const initialPrompt = '';
       const mockFiles = [
         { path: 'App.tsx', content: 'const App = () => <div>Hello</div>' },
         { path: 'src/lib/supabase.ts', content: '// Supabase client' },
@@ -327,7 +327,11 @@ describe('E2E Backend Apply Flow', () => {
       });
 
       // First render - IDLE stage
-      const { rerender } = render(<BuilderPage initialPrompt={initialPrompt} />);
+      const { rerender } = render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // WHEN: User generates code
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -350,7 +354,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      rerender(<BuilderPage initialPrompt={initialPrompt} />);
+      rerender(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // THEN: CredentialsModal appears with projectUrl and anonKey
       await waitFor(() => {
@@ -385,7 +393,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should show correct credentials in modal after backend creation', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockResult = createMockResult({
         projectUrl: 'https://my-awesome-app.supabase.co',
         projectName: 'my-awesome-app',
@@ -410,7 +417,11 @@ describe('E2E Backend Apply Flow', () => {
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
       // WHEN
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // THEN: CredentialsModal shows correct project info
       await waitFor(() => {
@@ -425,7 +436,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should close CredentialsModal after successful apply', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements();
@@ -451,7 +461,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Verify modal is visible
       await waitFor(() => {
@@ -473,7 +487,6 @@ describe('E2E Backend Apply Flow', () => {
   describe('T-037: Error Recovery - Backend Creation Fails', () => {
     it('should show error toast when WebContainer remount fails during apply', async () => {
       // GIVEN: User is in CredentialsModal with backend credentials
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements();
@@ -502,7 +515,11 @@ describe('E2E Backend Apply Flow', () => {
       // Mock mount to fail
       mockMount.mockRejectedValueOnce(new Error('Mount failed'));
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -525,7 +542,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should keep modal open on error so user can retry', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements();
@@ -554,7 +570,11 @@ describe('E2E Backend Apply Flow', () => {
       // Mock mount to fail
       mockMount.mockRejectedValueOnce(new Error('Mount failed'));
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -572,7 +592,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should allow user to retry after error', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements();
@@ -601,7 +620,11 @@ describe('E2E Backend Apply Flow', () => {
       // First call fails, second succeeds
       mockMount.mockRejectedValueOnce(new Error('Mount failed')).mockResolvedValueOnce(undefined);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -632,7 +655,6 @@ describe('E2E Backend Apply Flow', () => {
   describe('T-038: Edge Case - Code Without Backend Needs', () => {
     it('should show info toast when adaptation is skipped', async () => {
       // GIVEN: Generated code doesn't use Supabase features
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements({
@@ -663,7 +685,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -686,7 +712,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should keep modal open when adaptation is skipped', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements({
@@ -716,7 +741,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -734,7 +763,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should not call mount when adaptation is skipped', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements({
@@ -767,7 +795,11 @@ describe('E2E Backend Apply Flow', () => {
       // Clear any previous calls
       mockMount.mockClear();
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -791,7 +823,6 @@ describe('E2E Backend Apply Flow', () => {
   describe('T-039: State Clearing - Generate New Code Clears Backend State', () => {
     it('should call resetBackend when sending a new message', async () => {
       // GIVEN: User has created backend and sees CredentialsModal
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements();
@@ -810,7 +841,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Verify CredentialsModal is visible
       await waitFor(() => {
@@ -828,7 +863,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should close CredentialsModal when generating new code', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
       const mockRequirements = createMockRequirements();
@@ -847,7 +881,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Verify modal is visible
       await waitFor(() => {
@@ -865,7 +903,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should clear backend state before new generation starts', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'New App' }];
 
       mockGenerate.mockResolvedValue({ message: 'New generated code', files: mockFiles });
@@ -882,7 +919,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // WHEN: User generates new code
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -899,7 +940,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should not affect new generation with stale backend state', async () => {
       // GIVEN: User has stale backend state
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'Brand New App' }];
 
       mockGenerate.mockResolvedValue({
@@ -920,7 +960,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Verify stale modal is visible
       await waitFor(() => {
@@ -945,7 +989,6 @@ describe('E2E Backend Apply Flow', () => {
   describe('Integration: Apply Flow With Missing Data', () => {
     it('should show error when requirements is null', async () => {
       // GIVEN
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'test' }];
       const mockResult = createMockResult();
 
@@ -963,7 +1006,11 @@ describe('E2E Backend Apply Flow', () => {
         reset: mockResetBackend,
       } as unknown as ReturnType<typeof useBackendCreationModule.useBackendCreation>);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('credentials-modal')).toBeDefined();
@@ -986,7 +1033,6 @@ describe('E2E Backend Apply Flow', () => {
 
     it('should show error when result is null', async () => {
       // GIVEN
-      const initialPrompt = '';
 
       mockGenerate.mockResolvedValue({
         message: 'Generated',
@@ -1008,7 +1054,11 @@ describe('E2E Backend Apply Flow', () => {
       // Note: When result is null, CredentialsModal won't render
       // But the handler should still handle this gracefully
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Modal should NOT be visible when result is null
       await waitFor(() => {

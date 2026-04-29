@@ -1,0 +1,44 @@
+change: landing-page-links
+status: archived
+current_phase: 7
+started: 2026-04-28
+last_updated: 2026-04-29
+archived: 2026-04-29
+
+phases:
+  phase_1_foundation:
+    status: complete
+    completed: 2026-04-28
+  phase_2_router_migration:
+    status: complete
+    completed: 2026-04-28
+    notes: "Plus 3 post-phase fixes (logo links, removed initialPrompt prop, TopBar logo)"
+  phase_3_showcase_page:
+    status: complete
+    completed: 2026-04-29
+    notes: "ShowcasePage.tsx + ShowcasePage.css + App.routing.test.tsx mock fix"
+  phase_4_templates_page:
+    status: complete
+    completed: 2026-04-29
+    notes: "TemplatesPage full implementation + templates.ts data + TemplatesPage.css + tests"
+  phase_5_sign_in_modal:
+    status: complete
+    completed: 2026-04-29
+    notes: "SignInModal.tsx + SignInModal.css + LandingPage integration + tests"
+  phase_6_builder_integration:
+    status: complete
+    completed: 2026-04-29
+    notes: "BuilderPage projectId-driven openProject via useParams + tests"
+  phase_7_integration_tests:
+    status: complete
+    completed: 2026-04-29
+    notes: "All phases complete — ready for verify + archive"
+
+test_results:
+  files: 118
+  tests: 1736
+  status: all_green
+  tsc: zero_errors
+
+next_steps:
+- Change archived. No further action required.

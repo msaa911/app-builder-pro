@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import BuilderPage from '../BuilderPage';
 
 // ===== Mock Toast System =====
@@ -234,7 +235,11 @@ describe('BuilderPage — Editor Run Flow', () => {
   describe('CodeEditor receives onRun prop (ER-001)', () => {
     it('should pass onRun callback to CodeEditor', async () => {
       // When
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Switch to Code tab (default is preview — CodeEditor only renders on code tab)
       const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -251,7 +256,11 @@ describe('BuilderPage — Editor Run Flow', () => {
   describe('onRun calls restartDev (ER-001, ER-008)', () => {
     it('should call restartDev when onRun is triggered', async () => {
       // Given
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Switch to Code tab so CodeEditor mounts and captures props
       const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -275,7 +284,11 @@ describe('BuilderPage — Editor Run Flow', () => {
   describe('isRunning passed to CodeEditor (ER-002)', () => {
     it('should pass isRunning=false to CodeEditor initially', async () => {
       // When
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Switch to Code tab so CodeEditor mounts and captures props
       const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -312,7 +325,11 @@ describe('BuilderPage — Editor Run Flow', () => {
       };
       (WCM.getInstance as ReturnType<typeof vi.fn>).mockResolvedValue(mockWcmInstance);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for the useEffect to wire up onDevExit
       await waitFor(() => {
@@ -354,7 +371,11 @@ describe('BuilderPage — Editor Run Flow', () => {
       };
       (WCM.getInstance as ReturnType<typeof vi.fn>).mockResolvedValue(mockWcmInstance);
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(capturedOnDevExit).not.toBeNull();

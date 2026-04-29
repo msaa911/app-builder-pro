@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import BuilderPage from '../BuilderPage';
 
 // ===== Mock Toast System =====
@@ -216,7 +217,11 @@ describe('BuilderPage — handleFileSelect (FCL-001, FCL-004)', () => {
     const user = userEvent.setup();
     mockReadFile.mockResolvedValue('export default function App() { return <div /> }');
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab to see the editor
     const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -242,7 +247,11 @@ describe('BuilderPage — handleFileSelect (FCL-001, FCL-004)', () => {
   it('clicking a binary file sets activeFile with placeholder without calling WCM.readFile', async () => {
     const user = userEvent.setup();
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab
     const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -267,7 +276,11 @@ describe('BuilderPage — handleFileSelect (FCL-001, FCL-004)', () => {
     const user = userEvent.setup();
     mockReadFile.mockRejectedValue(new Error('Read failed'));
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab
     const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -310,7 +323,11 @@ describe('BuilderPage — handleFileSelect (FCL-001, FCL-004)', () => {
       return Promise.resolve('FAST CONTENT');
     });
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab
     const codeTab = screen.getByRole('button', { name: 'Code' });

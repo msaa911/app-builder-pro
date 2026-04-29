@@ -1,0 +1,236 @@
+.showcase-container {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+/* Background Orbs (same as LandingPage) */
+.showcase-container .bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  opacity: 0.15;
+}
+
+.showcase-container .orb-1 {
+  width: 500px;
+  height: 500px;
+  background: var(--grad-hero);
+  top: -100px;
+  right: -100px;
+}
+
+.showcase-container .orb-2 {
+  width: 400px;
+  height: 400px;
+  background: var(--accent-primary);
+  bottom: -100px;
+  left: -100px;
+}
+
+/* Header */
+.showcase-header {
+  height: 80px;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 10;
+}
+
+.showcase-header .logo-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.showcase-header .logo-icon {
+  color: var(--accent-primary);
+  width: 28px;
+  height: 28px;
+}
+
+.showcase-header .logo-icon.active {
+  color: var(--accent-primary);
+}
+
+.showcase-header .btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.showcase-header .btn-back:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Main Content */
+.showcase-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px 80px;
+  position: relative;
+  z-index: 10;
+}
+
+.showcase-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+/* Empty State */
+.showcase-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px 40px;
+  text-align: center;
+  max-width: 480px;
+}
+
+.showcase-empty .empty-icon {
+  color: var(--text-muted);
+  width: 64px;
+  height: 64px;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.showcase-empty .empty-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.showcase-empty .empty-description {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.showcase-empty .btn-start {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  padding: 12px 28px;
+  border-radius: var(--radius-xl);
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  margin-top: 16px;
+  transition: all 0.2s ease;
+}
+
+.showcase-empty .btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.4);
+}
+
+/* Project Grid */
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 1000px;
+}
+
+/* Project Card */
+.project-card {
+  display: block;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border);
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.15);
+}
+
+.project-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.project-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-card-icon {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.project-card-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.project-card-files,
+.project-card-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Glass effect (same as LandingPage feature cards) */
+.project-card.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .showcase-title {
+    font-size: 1.75rem;
+  }
+
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .showcase-header {
+    padding: 0 20px;
+  }
+}

@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import BuilderPage from '../BuilderPage';
 
 // ===== Mock Toast System =====
@@ -254,7 +255,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockInstall.mockResolvedValue(0);
     mockRunDev.mockResolvedValue(undefined);
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Act: send a message
     const sendBtn = screen.getByTestId('send-message-btn');
@@ -289,7 +294,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockRunDev.mockResolvedValue(undefined);
     mockUpdateFiles.mockResolvedValue(undefined);
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Act: send first message (generate)
     const sendBtn = screen.getByTestId('send-message-btn');
@@ -333,7 +342,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
 
     const { mergeFiles } = await import('../../utils/mergeFiles');
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -374,7 +387,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockRunDev.mockResolvedValue(undefined);
     mockUpdateFiles.mockResolvedValue(undefined);
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -423,7 +440,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockRunDev.mockResolvedValue(undefined);
     mockUpdateFiles.mockResolvedValue(undefined);
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -476,7 +497,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
       overwrittenPaths: ['src/App.tsx'],
     });
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -534,7 +559,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
       overwrittenPaths: ['src/App.tsx'],
     });
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -617,7 +646,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
 
     (formatDiffSummary as ReturnType<typeof vi.fn>).mockReturnValue('~ src/App.tsx (+3/-1)');
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
 
@@ -653,7 +686,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockInstall.mockResolvedValue(0);
     mockRunDev.mockResolvedValue(undefined);
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
     const newChatBtn = screen.getByTestId('new-chat-btn');
@@ -695,7 +732,11 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockInstall.mockResolvedValue(0);
     mockRunDev.mockResolvedValue(undefined);
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     const sendBtn = screen.getByTestId('send-message-btn');
     const newChatBtn = screen.getByTestId('new-chat-btn');

@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Terminal, Code2, Rocket, Settings } from 'lucide-react';
 import SettingsModal from '../components/settings/SettingsModal';
 import PrivacyPolicyModal from '../components/privacy/PrivacyPolicyModal';
+import SignInModal from '../components/common/SignInModal';
 import { sanitizeInput } from '../utils/sanitize';
 import './LandingPage.css';
 
-interface LandingPageProps {
-  onStartBuild: (prompt: string) => void;
-}
-
-const LandingPage: React.FC<LandingPageProps> = ({ onStartBuild }) => {
+const LandingPage: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const navigate = useNavigate();
 
   const examples = [
     'A modern SaaS dashboard with dark mode',
@@ -27,7 +27,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartBuild }) => {
     if (prompt.trim()) {
       // SEC-03: Apply sanitization to landing page prompt
       const sanitizedPrompt = sanitizeInput(prompt);
-      onStartBuild(sanitizedPrompt);
+      navigate('/builder', { state: { prompt: sanitizedPrompt } });
     }
   };
 
@@ -38,15 +38,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartBuild }) => {
       <div className="bg-orb orb-2"></div>
 
       <header className="landing-header" data-testid="landing-header">
-        <div className="logo-container">
+        <Link to="/" className="logo-container" data-testid="logo-link">
           <Sparkles className="logo-icon" />
           <span className="logo-text">
             App Builder <span>Pro</span>
           </span>
-        </div>
+        </Link>
         <nav className="landing-nav" data-testid="landing-nav">
-          <a href="#">Showcase</a>
-          <a href="#">Templates</a>
+          <Link to="/showcase">Showcase</Link>
+          <Link to="/templates">Templates</Link>
           <div className="divider-h"></div>
           <button
             className="btn-icon-landing"
@@ -55,7 +55,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartBuild }) => {
           >
             <Settings size={20} />
           </button>
-          <button className="btn-outline">Sign In</button>
+          <button className="btn-outline" onClick={() => setIsSignInOpen(true)}>
+            Sign In
+          </button>
         </nav>
       </header>
 
@@ -148,6 +150,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStartBuild }) => {
 
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
       <PrivacyPolicyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+      <SignInModal isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />
     </div>
   );
 };

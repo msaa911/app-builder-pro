@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Sparkles,
   Share2,
@@ -89,9 +90,9 @@ const TopBar: React.FC<TopBarProps> = ({
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <div className="logo-compact">
+        <Link to="/" className="logo-compact" data-testid="logo-link" aria-label="Go to home page">
           <Sparkles className="logo-icon active" />
-        </div>
+        </Link>
         <div className="project-info" onClick={handleToggleDropdown}>
           <h1 className="project-name">{projectName}</h1>
           <ChevronDown size={14} className={`chevron ${isProjectDropdownOpen ? 'rotated' : ''}`} />

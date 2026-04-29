@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import BuilderPage from '../../pages/BuilderPage';
 
 // ===== Mock Toast System =====
@@ -214,7 +215,11 @@ describe('file-content-preview integration (FCL-001, CE-001)', () => {
   it('full flow: FileExplorer click → handleFileSelect → readFile → CodeEditor shows content', async () => {
     const user = userEvent.setup();
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab to see the editor
     const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -243,7 +248,11 @@ describe('file-content-preview integration (FCL-001, CE-001)', () => {
   it('switching files updates CodeEditor content (CE-001 controlled mode)', async () => {
     const user = userEvent.setup();
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab
     const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -276,7 +285,11 @@ describe('file-content-preview integration (FCL-001, CE-001)', () => {
   it('clicking a binary file shows placeholder without calling readFile', async () => {
     const user = userEvent.setup();
 
-    render(<BuilderPage initialPrompt="" />);
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
 
     // Switch to Code tab
     const codeTab = screen.getByRole('button', { name: 'Code' });

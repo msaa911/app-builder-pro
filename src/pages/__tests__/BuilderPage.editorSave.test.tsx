@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { RouterWrapper } from '../../test-utils/RouterWrapper';
 import BuilderPage from '../BuilderPage';
 
 // ===== Mock Toast System =====
@@ -281,7 +282,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('original content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Switch to Code tab
       const codeTab = screen.getByRole('button', { name: 'Code' });
@@ -308,7 +313,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('some content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -335,7 +344,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       mockIsWriting = true;
       mockReadFile.mockResolvedValue('some content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -369,7 +382,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('initial');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -389,7 +406,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -414,7 +435,11 @@ describe('BuilderPage — Editor Save Flow', () => {
         })
       );
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -450,7 +475,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -469,7 +498,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('original content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -508,7 +541,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('original content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -560,7 +597,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('initial content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);
@@ -599,7 +640,11 @@ describe('BuilderPage — Editor Save Flow', () => {
       const user = userEvent.setup();
       mockReadFile.mockResolvedValue('content');
 
-      render(<BuilderPage initialPrompt="" />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       const codeTab = screen.getByRole('button', { name: 'Code' });
       await user.click(codeTab);

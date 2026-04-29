@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { RouterWrapper } from '../test-utils/RouterWrapper';
 import BuilderPage from '../pages/BuilderPage';
 import * as SettingsContext from '../contexts/SettingsContext';
 import * as useAIBuilderModule from '../hooks/useAIBuilder';
@@ -351,10 +352,12 @@ describe('BuilderPage', () => {
   describe('renders all main panels on load', () => {
     it('renders main panels correctly when preview tab is active', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - verificar que los paneles principales existen (preview por defecto)
       expect(screen.queryByTestId('topbar')).not.toBeNull();
@@ -365,10 +368,12 @@ describe('BuilderPage', () => {
 
     it('shows correct project name in TopBar', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then
       const projectName = screen.getByTestId('project-name');
@@ -379,10 +384,12 @@ describe('BuilderPage', () => {
   describe('state transitions', () => {
     it('starts in idle state', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then
       const builderState = screen.getByTestId('builder-state');
@@ -391,13 +398,16 @@ describe('BuilderPage', () => {
 
     it('transitions to generating state when sending a message', async () => {
       // Given
-      const initialPrompt = '';
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
         files: [],
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When - usuario hace click en send
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -412,10 +422,12 @@ describe('BuilderPage', () => {
   describe('panel layout', () => {
     it('has preview panel rendered by default', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - verificar que preview panel está renderizado
       expect(screen.queryByTestId('preview-panel')).not.toBeNull();
@@ -423,10 +435,12 @@ describe('BuilderPage', () => {
 
     it('has two tabs in workspace', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - verificar que hay tabs en el workspace
       const tabs = document.querySelectorAll('.tab-btn');
@@ -439,13 +453,16 @@ describe('BuilderPage', () => {
   describe('chat input handling', () => {
     it('can submit prompts via onSendMessage', async () => {
       // Given
-      const initialPrompt = '';
       mockGenerate.mockResolvedValue({
         message: 'Generated code',
         files: [],
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -458,13 +475,16 @@ describe('BuilderPage', () => {
 
     it('calls generate when submitting message', async () => {
       // Given
-      const initialPrompt = '';
       mockGenerate.mockResolvedValue({
         message: 'Generated code',
         files: [],
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -479,7 +499,6 @@ describe('BuilderPage', () => {
   describe('code sync', () => {
     it('displays generated files when response has files', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [
         { path: 'App.tsx', content: 'const App = () => <div>Hello</div>' },
         { path: 'index.css', content: 'body { margin: 0 }' },
@@ -492,7 +511,11 @@ describe('BuilderPage', () => {
       mockInstall.mockResolvedValue(1);
       mockRunDev.mockResolvedValue(undefined);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When - send message que genera archivos
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -507,10 +530,13 @@ describe('BuilderPage', () => {
   describe('error states', () => {
     it('shows error state when generate throws', async () => {
       // Given
-      const initialPrompt = '';
       mockGenerate.mockRejectedValue(new Error('API Error'));
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -524,9 +550,11 @@ describe('BuilderPage', () => {
 
     it('displays console panel for error logs', () => {
       // Given
-      const initialPrompt = '';
-
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then
       expect(screen.queryByTestId('console-panel')).not.toBeNull();
@@ -538,10 +566,13 @@ describe('BuilderPage', () => {
   describe('quota exceeded', () => {
     it('handles quota error', async () => {
       // Given
-      const initialPrompt = '';
       mockGenerate.mockRejectedValue(new Error('429: Quota exceeded'));
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -556,13 +587,16 @@ describe('BuilderPage', () => {
   describe('API key missing', () => {
     it('calls getEffectiveApiKey when sending message', async () => {
       // Given
-      const initialPrompt = '';
       mockGenerate.mockResolvedValue({
         message: 'Generated code',
         files: [],
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When - envía mensaje
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -577,10 +611,12 @@ describe('BuilderPage', () => {
   describe('empty initial prompt', () => {
     it('renders without processing when empty', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - no debe llamar a generate desde el inicio
       expect(mockGenerate).not.toHaveBeenCalled();
@@ -590,10 +626,12 @@ describe('BuilderPage', () => {
   describe('settings modal', () => {
     it('can open settings modal via TopBar', () => {
       // Given
-      const initialPrompt = '';
-
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Click en settings
       fireEvent.click(screen.getByTestId('settings-btn'));
@@ -604,8 +642,11 @@ describe('BuilderPage', () => {
 
     it('can close settings modal', () => {
       // Given
-      const initialPrompt = '';
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Abrir settings
       fireEvent.click(screen.getByTestId('settings-btn'));
@@ -623,14 +664,17 @@ describe('BuilderPage', () => {
   describe('WebContainer flow integration', () => {
     it('calls mount when files are generated', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -643,14 +687,17 @@ describe('BuilderPage', () => {
 
     it('calls install after mount', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -663,14 +710,17 @@ describe('BuilderPage', () => {
 
     it('calls runDev after install', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -683,7 +733,6 @@ describe('BuilderPage', () => {
 
     it('sets preview URL when runDev completes', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
@@ -693,7 +742,11 @@ describe('BuilderPage', () => {
         onReady('http://localhost:3000');
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -711,7 +764,6 @@ describe('BuilderPage', () => {
   describe('CredentialsModal rendering', () => {
     it('should NOT render CredentialsModal when showCredentialsModal is false', () => {
       // Given
-      const initialPrompt = '';
       vi.spyOn(useBackendCreationModule, 'useBackendCreation').mockReturnValue({
         stage: PipelineStage.IDLE,
         progress: 0,
@@ -725,7 +777,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - CredentialsModal should NOT be in the document
       const credentialsModal = screen.queryByTestId('credentials-modal');
@@ -734,7 +790,6 @@ describe('BuilderPage', () => {
 
     it('should render CredentialsModal when backendStage is COMPLETE and result exists', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -755,7 +810,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - CredentialsModal should be rendered with result data
       await waitFor(() => {
@@ -769,7 +828,6 @@ describe('BuilderPage', () => {
 
     it('should close CredentialsModal when close button is clicked', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -789,7 +847,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Verify modal is initially visible
       await waitFor(() => {
@@ -817,9 +879,11 @@ describe('BuilderPage', () => {
   describe('modal transition on COMPLETE stage', () => {
     it('should close BackendCreationModal when stage transitions to COMPLETE', async () => {
       // Given - start with CREATING stage
-      const initialPrompt = '';
-
-      const { rerender } = render(<BuilderPage initialPrompt={initialPrompt} />);
+      const { rerender } = render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Initially BackendCreationModal should not be visible (stage is IDLE)
       expect(screen.queryByTestId('backend-creation-modal')).toBeNull();
@@ -844,7 +908,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      rerender(<BuilderPage initialPrompt={initialPrompt} />);
+      rerender(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - BackendCreationModal should be closed
       await waitFor(() => {
@@ -854,7 +922,6 @@ describe('BuilderPage', () => {
 
     it('should pass result and requirements props to CredentialsModal', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -891,7 +958,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - CredentialsModal should receive result data
       await waitFor(() => {
@@ -908,7 +979,6 @@ describe('BuilderPage', () => {
   describe('Apply to Project button', () => {
     it('should render Apply button in CredentialsModal when result exists', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -929,7 +999,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - Apply button should be rendered
       await waitFor(() => {
@@ -940,7 +1014,6 @@ describe('BuilderPage', () => {
 
     it('should have Apply button enabled when isApplying is false', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -961,7 +1034,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - Apply button should be enabled
       await waitFor(() => {
@@ -972,7 +1049,6 @@ describe('BuilderPage', () => {
 
     it('should have Apply button disabled when isApplying is true', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -992,7 +1068,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for modal to appear
       await waitFor(() => {
@@ -1010,7 +1090,6 @@ describe('BuilderPage', () => {
 
     it('should show isApplying as false initially', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1031,7 +1110,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // When
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Then - isApplying should be false
       await waitFor(() => {
@@ -1041,7 +1124,6 @@ describe('BuilderPage', () => {
 
     it('should call adaptProject when Apply button is clicked', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1092,7 +1174,11 @@ describe('BuilderPage', () => {
         skipped: false,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for modal to appear
       await waitFor(() => {
@@ -1111,7 +1197,6 @@ describe('BuilderPage', () => {
 
     it('should close CredentialsModal after successful apply', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1155,7 +1240,11 @@ describe('BuilderPage', () => {
         skipped: false,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for modal to appear
       await waitFor(() => {
@@ -1178,7 +1267,6 @@ describe('BuilderPage', () => {
   describe('Edge Cases: Adaptation Skipped', () => {
     it('should show info toast when adaptation is skipped', async () => {
       // Given - setup with result and requirements
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1215,7 +1303,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for modal to appear
       await waitFor(() => {
@@ -1239,7 +1331,6 @@ describe('BuilderPage', () => {
 
     it('should keep CredentialsModal open when adaptation is skipped', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1276,7 +1367,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for modal
       await waitFor(() => {
@@ -1297,7 +1392,6 @@ describe('BuilderPage', () => {
   describe('Edge Cases: WebContainer Remount Failure', () => {
     it('should show error toast when WebContainer remount fails', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1344,7 +1438,11 @@ describe('BuilderPage', () => {
       // Mock mount to throw error
       mockMount.mockRejectedValueOnce(new Error('Mount failed'));
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Wait for modal
       await waitFor(() => {
@@ -1368,7 +1466,6 @@ describe('BuilderPage', () => {
 
     it('should keep modal open on error so user can retry', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1415,7 +1512,11 @@ describe('BuilderPage', () => {
       // Mock mount to throw error
       mockMount.mockRejectedValueOnce(new Error('Mount failed'));
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.queryByTestId('credentials-modal')).not.toBeNull();
@@ -1435,7 +1536,6 @@ describe('BuilderPage', () => {
   describe('Edge Cases: Missing Requirements', () => {
     it('should show error message when requirements is null', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1455,7 +1555,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.queryByTestId('credentials-modal')).not.toBeNull();
@@ -1478,7 +1582,6 @@ describe('BuilderPage', () => {
 
     it('should not close modal when requirements is missing', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1498,7 +1601,11 @@ describe('BuilderPage', () => {
         reset: mockResetBackend,
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.queryByTestId('credentials-modal')).not.toBeNull();
@@ -1519,14 +1626,17 @@ describe('BuilderPage', () => {
   describe('State Clearing on New Generation', () => {
     it('should call resetBackend when sending a new message', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When - send a new message
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -1539,14 +1649,17 @@ describe('BuilderPage', () => {
 
     it('should call resetBackend before generate is called', async () => {
       // Given
-      const initialPrompt = '';
       const mockFiles = [{ path: 'App.tsx', content: 'const App = () => <div>Hello</div>' }];
       mockGenerate.mockResolvedValue({
         message: 'Here is your app',
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When - send a new message
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -1563,7 +1676,6 @@ describe('BuilderPage', () => {
 
     it('should close CredentialsModal when sending a new message', async () => {
       // Given - start with COMPLETE stage and CredentialsModal open
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1605,7 +1717,11 @@ describe('BuilderPage', () => {
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Verify CredentialsModal is visible
       await waitFor(() => {
@@ -1627,7 +1743,6 @@ describe('BuilderPage', () => {
 
     it('should clear backend state when user starts new generation after backend creation', async () => {
       // Given - user has a complete backend
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1653,7 +1768,11 @@ describe('BuilderPage', () => {
         files: mockFiles,
       });
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // When - user sends a new message (new generation)
       fireEvent.click(screen.getByTestId('send-btn'));
@@ -1668,7 +1787,6 @@ describe('BuilderPage', () => {
   describe('Error State Tracking', () => {
     it('should clear error state when user retries', async () => {
       // Given
-      const initialPrompt = '';
       const mockResult = {
         projectUrl: 'https://test-project.supabase.co',
         anonKey: 'test-anon-key-12345',
@@ -1715,7 +1833,11 @@ describe('BuilderPage', () => {
       // First call fails, second succeeds
       mockMount.mockRejectedValueOnce(new Error('Mount failed')).mockResolvedValueOnce(undefined);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       await waitFor(() => {
         expect(screen.queryByTestId('credentials-modal')).not.toBeNull();
@@ -1756,7 +1878,6 @@ describe('BuilderPage', () => {
   describe('FileExplorer integration', () => {
     it('clicking a file in FileExplorer sets activeFile and opens in CodeEditor', async () => {
       // Given - BuilderPage with files in the file tree
-      const initialPrompt = '';
       const mockFiles = [
         { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
         { path: 'src/index.ts', content: 'console.log("hi")' },
@@ -1772,7 +1893,11 @@ describe('BuilderPage', () => {
       } as any);
 
       // Switch to code tab to see the editor
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
       const codeTab = screen.getByText('Code');
       fireEvent.click(codeTab);
 
@@ -1789,7 +1914,6 @@ describe('BuilderPage', () => {
 
     it('creating a new file auto-selects it in CodeEditor', async () => {
       // Given - BuilderPage with file tree that has createFile method
-      const initialPrompt = '';
       const newFilePath = 'new-file.ts';
 
       const mockCreateFile = vi.fn().mockResolvedValue(newFilePath);
@@ -1809,7 +1933,11 @@ describe('BuilderPage', () => {
         createFolder: vi.fn().mockResolvedValue('new-folder'),
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
 
       // Switch to code tab to see the editor
       fireEvent.click(screen.getByText('Code'));
@@ -1834,7 +1962,6 @@ describe('BuilderPage', () => {
 
     it('selectedPath is passed to FileExplorer after file click', async () => {
       // Given - BuilderPage with files in the file tree
-      const initialPrompt = '';
       const mockFiles = [
         { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
         { path: 'src/utils.ts', content: 'export const id = (x: any) => x' },
@@ -1849,7 +1976,11 @@ describe('BuilderPage', () => {
         createFolder: vi.fn().mockResolvedValue('new-folder'),
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
       fireEvent.click(screen.getByText('Code'));
 
       // When - click src/utils.ts in FileExplorer
@@ -1864,7 +1995,6 @@ describe('BuilderPage', () => {
 
     it('creation error toast includes the error message', async () => {
       // Given - createFile will reject with a specific error
-      const initialPrompt = '';
       const existingFiles = [
         { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
       ];
@@ -1880,7 +2010,11 @@ describe('BuilderPage', () => {
         createFolder: vi.fn().mockResolvedValue('new-folder'),
       } as any);
 
-      render(<BuilderPage initialPrompt={initialPrompt} />);
+      render(
+        <RouterWrapper>
+          <BuilderPage />
+        </RouterWrapper>
+      );
       fireEvent.click(screen.getByText('Code'));
 
       // When - trigger onNewItem which will cause createFile to reject
@@ -1910,7 +2044,6 @@ describe('BuilderPage', () => {
     describe('handleDeleteItem', () => {
       it('calls fileTree.deleteItem with the correct path', async () => {
         // Given - BuilderPage with files in the file tree
-        const initialPrompt = '';
         const mockDeleteItem = vi.fn().mockResolvedValue(undefined);
         const existingFiles = [
           { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
@@ -1927,7 +2060,11 @@ describe('BuilderPage', () => {
           deleteItem: mockDeleteItem,
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
         fireEvent.click(screen.getByText('Code'));
 
         // When - trigger onDeleteItem (simulating deleting a file)
@@ -1944,7 +2081,6 @@ describe('BuilderPage', () => {
 
       it('clears activeFile when deleted path matches exactly', async () => {
         // Given - activeFile is the file being deleted
-        const initialPrompt = '';
         const mockDeleteItem = vi.fn().mockResolvedValue(undefined);
         const existingFiles = [
           { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
@@ -1961,7 +2097,11 @@ describe('BuilderPage', () => {
           deleteItem: mockDeleteItem,
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
         fireEvent.click(screen.getByText('Code'));
 
         // Select src/old.ts as active file
@@ -1986,7 +2126,6 @@ describe('BuilderPage', () => {
 
       it('clears activeFile when parent folder is deleted', async () => {
         // Given - activeFile is inside the folder being deleted
-        const initialPrompt = '';
         const mockDeleteItem = vi.fn().mockResolvedValue(undefined);
         const existingFiles = [
           { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
@@ -2003,7 +2142,11 @@ describe('BuilderPage', () => {
           deleteItem: mockDeleteItem,
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
         fireEvent.click(screen.getByText('Code'));
 
         // Select src/components/Button.tsx as active file
@@ -2028,7 +2171,6 @@ describe('BuilderPage', () => {
 
       it('shows error toast when deleteItem rejects', async () => {
         // Given - deleteItem will reject with a specific error
-        const initialPrompt = '';
         const existingFiles = [
           { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
         ];
@@ -2045,7 +2187,11 @@ describe('BuilderPage', () => {
           deleteItem: mockDeleteItem,
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
         fireEvent.click(screen.getByText('Code'));
 
         // When - trigger onDeleteItem which will cause deleteItem to reject
@@ -2067,7 +2213,6 @@ describe('BuilderPage', () => {
 
       it('does not clear activeFile when unrelated file is deleted', async () => {
         // Given - activeFile is src/App.tsx
-        const initialPrompt = '';
         const mockDeleteItem = vi.fn().mockResolvedValue(undefined);
         const existingFiles = [
           { path: 'src/App.tsx', content: 'const App = () => <div>Hello</div>' },
@@ -2084,7 +2229,11 @@ describe('BuilderPage', () => {
           deleteItem: mockDeleteItem,
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
         fireEvent.click(screen.getByText('Code'));
 
         // Select src/App.tsx as active file
@@ -2109,8 +2258,6 @@ describe('BuilderPage', () => {
     // ============ Deploy Modal Handler Tests ============
     describe('Deploy modal handlers', () => {
       it('should close deploy modal when close button clicked', async () => {
-        const initialPrompt = '';
-
         vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
           stage: DeployStage.IDLE,
           progress: 0,
@@ -2139,7 +2286,11 @@ describe('BuilderPage', () => {
           refresh: vi.fn().mockResolvedValue(undefined),
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
 
         const deployButton = screen.queryByTestId('btn-deploy');
         if (deployButton) {
@@ -2156,8 +2307,6 @@ describe('BuilderPage', () => {
       });
 
       it('should call retryDeploy when retry button clicked', async () => {
-        const initialPrompt = '';
-
         vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
           stage: DeployStage.ERROR,
           progress: 50,
@@ -2186,7 +2335,11 @@ describe('BuilderPage', () => {
           refresh: vi.fn().mockResolvedValue(undefined),
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
 
         const retryButton = screen.queryByTestId('btn-retry');
         if (retryButton) {
@@ -2196,8 +2349,6 @@ describe('BuilderPage', () => {
       });
 
       it('should call abortDeploy when cancel button clicked', async () => {
-        const initialPrompt = '';
-
         vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
           stage: DeployStage.DEPLOYING,
           progress: 50,
@@ -2226,7 +2377,11 @@ describe('BuilderPage', () => {
           refresh: vi.fn().mockResolvedValue(undefined),
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
 
         const cancelButton = screen.queryByTestId('btn-cancel');
         if (cancelButton) {
@@ -2239,8 +2394,6 @@ describe('BuilderPage', () => {
     // ============ Deploy Success Handler Tests ============
     describe('Deploy success handler', () => {
       it('should close deploy success and reset when Done clicked', async () => {
-        const initialPrompt = '';
-
         vi.spyOn(useVercelDeployModule, 'useVercelDeploy').mockReturnValue({
           stage: DeployStage.COMPLETE,
           progress: 100,
@@ -2273,7 +2426,11 @@ describe('BuilderPage', () => {
           refresh: vi.fn().mockResolvedValue(undefined),
         } as any);
 
-        render(<BuilderPage initialPrompt={initialPrompt} />);
+        render(
+          <RouterWrapper>
+            <BuilderPage />
+          </RouterWrapper>
+        );
 
         const doneButton = screen.queryByTestId('btn-done-deploy');
         if (doneButton) {
