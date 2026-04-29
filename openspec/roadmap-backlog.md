@@ -29,57 +29,39 @@
 | 17 | editor-run-to-webcontainer | COMPLETE | Run button → restartDev, isRunning/hasCrashed states, dev exit toast (11 tests) |
 | 18 | project-persistence | COMPLETE | IndexedDB persistence, 5 projects max, auto-save 2s debounce, restore on mount, ProjectDropdown UI (90 tests, commit 37d20f5) |
 | 19 | landing-page-links | COMPLETE | react-router-dom, ShowcasePage, TemplatesPage (6 templates), SignInModal, BuilderPage route-aware (54 tests across 7 files) |
-| 20 | topbar-share | COMPLETE | Share button with clipboard copy, copied feedback (2s), disabled guard, toast success/error (12 tests: 7 unit + 5 integration, commit 6ae30e8) |
-| 21 | file-rename | COMPLETE | File/folder rename via context menu → inline input → WC fs.rename, protected path guard, activeFile path update (13 tests: 9 unit + 4 integration, commit 755a193) |
+| 20 | topbar-share | COMPLETE | Share button with clipboard copy, copied feedback (2s), disabled guard, toast success/error (12 tests, commit 6ae30e8) |
+| 21 | file-rename | COMPLETE | File/folder rename via context menu → inline input → WC fs.rename, protected path guard, activeFile path update (13 tests, commit 755a193) |
 
 ---
 
-## Pending Features — Ordered by E2E Priority
+## Pending Features — Ordered by Priority
 
-### 🟡 MEDIUM (UX incompleta)
+### 🔴 HIGH (bloquea E2E real)
 
-#### 1. Landing Page Links Vivos
-- **Problem**: Showcase, Templates, Sign In son dead links
-- **Impact**: UX básica rota en la landing
-- **Complexity**: Media
-- **SDD Change Name**: `landing-page-links`
-- **Status**: ✅ COMPLETE — All 7 phases done (react-router-dom, routes, ShowcasePage, TemplatesPage, SignInModal, BuilderPage route-aware, integration tests)
-
-#### 2. TopBar Share Button
-- **Problem**: Botón Share es dead UI
-- **Impact**: No se puede compartir proyecto por URL
-- **Complexity**: Media
-- **SDD Change Name**: `topbar-share`
-- **Status**: ✅ COMPLETE — Share button with clipboard copy, 2s copied feedback, disabled when no project, toast success/error (12 tests, commit 6ae30e8)
-
-#### 3. Auth / User Accounts
-- **Problem**: No hay autenticación ni cuentas de usuario
-- **Impact**: Persistencia real y multi-usuario requieren auth
+#### 1. Auth / User Accounts
+- **Problem**: No hay autenticación ni cuentas de usuario — la app es 100% local
+- **Impact**: Sin auth no hay multi-usuario, no hay sharing real, no hay deploy persistente
 - **Complexity**: Alta
 - **SDD Change Name**: `auth-user-accounts`
 
-### 🔵 LOW (Nice to have)
+### 🟡 MEDIUM (UX incompleta)
 
-#### 4. Version History / Undo
+#### 2. Version History / Undo
 - **Problem**: Sin historial de cambios ni undo de generación
-- **Impact**: Nice to have, no bloquea E2E
+- **Impact**: Un mal refine destruye código sin vuelta atrás
 - **Complexity**: Alta
 - **SDD Change Name**: `version-history-undo`
 
-#### 5. File Deletion & Rename in FileExplorer
-- **Problem**: Solo se pueden crear archivos, no eliminar ni renombrar
-- **Impact**: UX polishing
-- **Complexity**: Baja
-- **SDD Change Name**: `file-deletion-rename`
-- **Status**: ✅ COMPLETE — Rename implemented (FREN-001→FREN-011), Delete was already complete. Context menu → inline rename input → WC fs.rename, protected path guard, activeFile path update on rename (13 tests, commit 755a193)
+### 🔵 LOW (polishing)
 
-#### 6. Privacy Policy (10 TODOs legales)
-- **Problem**: 10 TODO comments en el texto legal
-- **Impact**: Legal, no funcional
-- **Complexity**: Baja
+#### 3. Privacy Policy Legal Review
+- **Problem**: 9 TODO comments en el texto legal del PrivacyPolicyModal
+- **Impact**: Legal compliance — requiere revisión legal real, no código
+- **Complexity**: Baja (pero requiere humano legal)
 - **SDD Change Name**: `privacy-policy-legal`
+- **Status**: ⏸️ DEFERRED — mover al FINAL, requiere revisión legal humana
 
-### 🔧 DEFERRED (intentionally postponed)
+### 🔧 INTENTIONALLY DEFERRED
 
 #### D1. WebContainer Auto-Boot on Restore
 - **Problem**: Restore no hace boot automático del WebContainer
@@ -97,28 +79,30 @@
 
 ---
 
-## Implementation Order (Proposed)
+## Implementation Order (Updated)
 
 ```
-Phase 1 — Critical E2E Flow:
-1.1 chat-iterative-refine → ✅ DONE
-1.2 editor-save-to-webcontainer → ✅ DONE
-1.3 editor-run-to-webcontainer → ✅ DONE (Run → restartDev)
+Phase 1 — Critical E2E Flow: ✅ COMPLETE
+  1.1 chat-iterative-refine → ✅ DONE
+  1.2 editor-save-to-webcontainer → ✅ DONE
+  1.3 editor-run-to-webcontainer → ✅ DONE
 
-Phase 2 — Stability & UX:
-2.1 project-persistence → ✅ DONE (IndexedDB, 5 projects, auto-save)
-2.2 landing-page-links → ✅ DONE (react-router-dom, ShowcasePage, TemplatesPage, SignInModal, BuilderPage route-aware)
+Phase 2 — Stability & UX: ✅ COMPLETE
+  2.1 project-persistence → ✅ DONE
+  2.2 landing-page-links → ✅ DONE
 
-Phase 3 — Sharing & Auth:
-3.1 topbar-share → ✅ DONE (clipboard copy + copied feedback)
-3.2 auth-user-accounts → base para features sociales
+Phase 3 — Sharing & Auth: 🔄 IN PROGRESS
+  3.1 topbar-share → ✅ DONE
+  3.2 file-deletion-rename → ✅ DONE (file-rename commit 755a193)
+  3.3 auth-user-accounts → NEXT
 
-Phase 4 — Polish:
-4.1 file-deletion-rename → UX del editor
-4.2 version-history-undo → calidad de vida
-4.3 privacy-policy-legal → compliance
+Phase 4 — Quality of Life:
+  4.1 version-history-undo → undo/refine sin perder código
 
-E2E Playwright: configurar DESPUÉS de Phase 2 completa
+Phase 5 — Compliance (último):
+  5.1 privacy-policy-legal → requiere revisión legal humana
+
+E2E Playwright: configurar DESPUÉS de Phase 3 completa
 ```
 
 ---
