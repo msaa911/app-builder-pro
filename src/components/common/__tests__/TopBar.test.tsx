@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import TopBar from '../TopBar';
 import { RouterWrapper } from '../../../test-utils/RouterWrapper';
 import type { BuilderState } from '../../../types';
@@ -13,6 +13,7 @@ import type { BuilderState } from '../../../types';
 vi.mock('lucide-react', () => ({
   Sparkles: () => <span data-testid="icon-sparkles">Sparkles</span>,
   Share2: () => <span data-testid="icon-share">Share</span>,
+  Check: () => <span data-testid="icon-check">Check</span>,
   Play: () => <span data-testid="icon-play">Play</span>,
   Settings: () => <span data-testid="icon-settings">Settings</span>,
   ChevronDown: () => <span data-testid="icon-chevron">Chevron</span>,
@@ -365,6 +366,98 @@ describe('TopBar', () => {
       fireEvent.click(deployBtn);
 
       expect(onDeploy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Share Button', () => {
+    it('should call onShare when Share button is clicked and not disabled', () => {
+      const onShare = vi.fn();
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} onShare={onShare} isShareDisabled={false} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      expect(shareBtn).not.toBeNull();
+      fireEvent.click(shareBtn);
+      expect(onShare).toHaveBeenCalledTimes(1);
+    });
+
+    it('should be disabled when isShareDisabled=true', () => {
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} isShareDisabled={true} onShare={vi.fn()} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      expect(shareBtn.disabled).toBe(true);
+    });
+
+    it('should show "No project to share" tooltip when disabled', () => {
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} isShareDisabled={true} onShare={vi.fn()} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      expect(shareBtn.title).toBe('No project to share');
+    });
+
+    it('should show "Copied!" text and Check icon after click', () => {
+      const onShare = vi.fn();
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} onShare={onShare} isShareDisabled={false} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      fireEvent.click(shareBtn);
+      expect(shareBtn.textContent).toContain('Copied!');
+      const checkIcon = shareBtn.querySelector('[data-testid="icon-check"]');
+      expect(checkIcon).not.toBeNull();
+    });
+
+    it('should revert to Share text after 2 seconds', async () => {
+      vi.useFakeTimers();
+      const onShare = vi.fn();
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} onShare={onShare} isShareDisabled={false} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      fireEvent.click(shareBtn);
+      expect(shareBtn.textContent).toContain('Copied!');
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(shareBtn.textContent).toContain('Share');
+      vi.useRealTimers();
+    });
+
+    it('should NOT call onShare when already in copied state', () => {
+      const onShare = vi.fn();
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} onShare={onShare} isShareDisabled={false} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      fireEvent.click(shareBtn); // first click
+      fireEvent.click(shareBtn); // second click during copied state
+      expect(onShare).toHaveBeenCalledTimes(1); // only called once
+    });
+
+    it('should not call onShare when button is disabled', () => {
+      const onShare = vi.fn();
+      render(
+        <RouterWrapper>
+          <TopBar {...defaultProps} onShare={onShare} isShareDisabled={true} />
+        </RouterWrapper>
+      );
+      const shareBtn = document.querySelector('[data-testid="btn-share"]') as HTMLButtonElement;
+      fireEvent.click(shareBtn);
+      expect(onShare).not.toHaveBeenCalled();
     });
   });
 });

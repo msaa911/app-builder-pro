@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Sparkles,
   Share2,
+  Check,
   Settings,
   ChevronDown,
   Rocket,
@@ -41,6 +42,10 @@ interface TopBarProps {
   onCreateProject?: (name?: string) => Promise<string>;
   onDeleteProject?: (id: string) => Promise<void>;
   onRenameProject?: (id: string, name: string) => Promise<void>;
+  /** Whether the Share button is disabled (true when !activeProjectId) */
+  isShareDisabled?: boolean;
+  /** Callback when Share button is clicked — clipboard logic in BuilderPage */
+  onShare?: () => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -60,9 +65,28 @@ const TopBar: React.FC<TopBarProps> = ({
   onCreateProject,
   onDeleteProject,
   onRenameProject,
+  isShareDisabled = true,
+  onShare,
 }) => {
   const isGenerating = state === 'generating' || state === 'installing';
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Share button click handler — TBS-001, TBS-009, TBS-010
+  const handleShareClick = useCallback(() => {
+    if (isCopied) return; // prevent double-click during copied state
+    onShare?.();
+    setIsCopied(true);
+    copiedTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000);
+  }, [isCopied, onShare]);
+
+  // Cleanup timeout on unmount — NFR-002
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+    };
+  }, []);
   const handleToggleDropdown = useCallback(() => {
     setIsProjectDropdownOpen((prev) => !prev);
   }, []);
@@ -145,9 +169,15 @@ const TopBar: React.FC<TopBarProps> = ({
           <span>{isCreatingBackend ? 'Creating...' : 'Create Backend'}</span>
         </button>
 
-        <button className="btn-ghost">
-          <Share2 size={18} />
-          <span>Share</span>
+        <button
+          className={`btn-ghost ${isShareDisabled ? 'disabled' : ''} ${isCopied ? 'copied' : ''}`}
+          disabled={isShareDisabled}
+          title={isShareDisabled ? 'No project to share' : isCopied ? 'Copied!' : 'Share project link'}
+          data-testid="btn-share"
+          onClick={handleShareClick}
+        >
+          {isCopied ? <Check size={18} data-testid="icon-check" /> : <Share2 size={18} />}
+          <span>{isCopied ? 'Copied!' : 'Share'}</span>
         </button>
         <button
           className={`btn-secondary ${isDeploying ? 'loading' : ''}`}

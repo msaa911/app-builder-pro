@@ -207,10 +207,16 @@
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+from {
+  transform: rotate(0deg);
+}
+to {
+  transform: rotate(360deg);
+}
+}
+
+/* Share button copied state — TBS-009 */
+.btn-ghost.copied {
+  color: var(--accent-green, #10b981);
+  pointer-events: none;
 }

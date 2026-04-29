@@ -744,6 +744,18 @@ const BuilderPageInner: React.FC = () => {
     setIsDeployModalOpen(true);
   }, [isVercelAuthenticated, vercelLogin]);
 
+  // ── Share: copy project URL to clipboard (TBS-005 to TBS-011) ────────
+  const handleShare = useCallback(async () => {
+    if (!persistence.activeProjectId) return; // TBS-011 guard
+    const shareUrl = `${window.location.origin}/builder/${persistence.activeProjectId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast({ message: 'Link copied!', type: 'success' }); // TBS-007
+    } catch {
+      showToast({ message: 'Failed to copy link', type: 'error' }); // TBS-008
+    }
+  }, [persistence.activeProjectId, showToast]);
+
   // Start deployment when deploy modal opens
   useEffect(() => {
     if (
@@ -905,6 +917,8 @@ const BuilderPageInner: React.FC = () => {
         onCreateProject={persistence.createProject}
         onDeleteProject={persistence.deleteProject}
         onRenameProject={persistence.renameProject}
+        isShareDisabled={!persistence.activeProjectId}
+        onShare={handleShare}
       />
 
       <main className="builder-main">
