@@ -10,8 +10,11 @@ import {
   Database,
   Loader2,
   Cloud,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { type BuilderState } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import { QuotaStatus } from './QuotaStatus';
 import ProjectDropdown from './ProjectDropdown';
 import type { ProjectMeta } from '../../services/storage/types';
@@ -46,6 +49,8 @@ interface TopBarProps {
   isShareDisabled?: boolean;
   /** Callback when Share button is clicked — clipboard logic in BuilderPage */
   onShare?: () => void;
+  /** Callback when Sign In button is clicked (opens SignInModal) — AUTH-008 */
+  onSignIn?: () => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -67,9 +72,15 @@ const TopBar: React.FC<TopBarProps> = ({
   onRenameProject,
   isShareDisabled = true,
   onShare,
+  onSignIn,
 }) => {
+  // Auth context — AUTH-007, AUTH-008, AUTH-009
+  const { user, logout } = useAuth();
+  const isAuthenticated = !!user;
+
   const isGenerating = state === 'generating' || state === 'installing';
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -87,29 +98,62 @@ const TopBar: React.FC<TopBarProps> = ({
       if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
     };
   }, []);
+
+  // Close user dropdown on outside click
+  useEffect(() => {
+    if (!isUserDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.user-avatar-wrapper')) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [isUserDropdownOpen]);
+
   const handleToggleDropdown = useCallback(() => {
     setIsProjectDropdownOpen((prev) => !prev);
   }, []);
+
+  const handleToggleUserDropdown = useCallback(() => {
+    setIsUserDropdownOpen((prev) => !prev);
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    setIsUserDropdownOpen(false);
+    await logout();
+  }, [logout]);
+
+  // Get user display info from auth metadata — AUTH-007
+  const userDisplayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split('@')[0] ||
+    'User';
+  const userAvatarUrl =
+    user?.user_metadata?.avatar_url ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userDisplayName)}`;
 
   // Determine backend button state
   const isButtonDisabled = !hasOAuthToken || !hasGeneratedCode || isCreatingBackend;
   const buttonTooltip = !hasGeneratedCode
     ? 'Generate code first'
     : !hasOAuthToken
-      ? 'Login with Supabase'
-      : isCreatingBackend
-        ? 'Creating backend...'
-        : 'Create Supabase backend';
+    ? 'Login with Supabase'
+    : isCreatingBackend
+    ? 'Creating backend...'
+    : 'Create Supabase backend';
 
   // Determine deploy button state
   const isDeployDisabled = !hasGeneratedCode || isDeploying;
   const deployTooltip = !hasGeneratedCode
     ? 'Generate code first'
     : isDeploying
-      ? 'Deploying to Vercel...'
-      : !isVercelAuthenticated
-        ? 'Login with Vercel to deploy'
-        : 'Deploy to Vercel';
+    ? 'Deploying to Vercel...'
+    : !isVercelAuthenticated
+    ? 'Login with Vercel to deploy'
+    : 'Deploy to Vercel';
 
   return (
     <header className="topbar">
@@ -147,10 +191,10 @@ const TopBar: React.FC<TopBarProps> = ({
               {state === 'generating'
                 ? 'Generating Code'
                 : state === 'installing'
-                  ? 'Installing Deps'
-                  : state === 'running'
-                    ? 'App Running'
-                    : 'Error'}
+                ? 'Installing Deps'
+                : state === 'running'
+                ? 'App Running'
+                : 'Error'}
             </span>
           </div>
         )}
@@ -198,9 +242,52 @@ const TopBar: React.FC<TopBarProps> = ({
         <button className="btn-icon" onClick={onOpenSettings}>
           <Settings size={18} />
         </button>
-        <div className="user-avatar">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" />
-        </div>
+
+        {/* Auth-aware user section — AUTH-007, AUTH-008, AUTH-009 */}
+        {isAuthenticated ? (
+          <div className="user-avatar-wrapper" data-testid="user-avatar-wrapper">
+            <button
+              className="user-avatar-btn"
+              data-testid="user-avatar-btn"
+              onClick={handleToggleUserDropdown}
+              title={userDisplayName}
+            >
+              <img
+                src={userAvatarUrl}
+                alt={userDisplayName}
+                data-testid="user-avatar-img"
+              />
+              <span className="user-avatar-name" data-testid="user-avatar-name">
+                {userDisplayName}
+              </span>
+            </button>
+            {isUserDropdownOpen && (
+              <div className="user-dropdown" data-testid="user-dropdown">
+                <div className="user-dropdown-info" data-testid="user-dropdown-email">
+                  {user?.email}
+                </div>
+                <button
+                  className="user-dropdown-item"
+                  data-testid="btn-logout"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            className="btn-outline-sm"
+            data-testid="btn-signin"
+            onClick={onSignIn}
+            title="Sign In"
+          >
+            <User size={16} />
+            <span>Sign In</span>
+          </button>
+        )}
       </div>
     </header>
   );

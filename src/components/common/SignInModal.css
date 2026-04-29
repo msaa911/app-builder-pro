@@ -1,4 +1,4 @@
-/* SignInModal.css */
+/* SignInModal.css — Real auth form styles (AUTH-004, AUTH-005) */
 
 .signin-modal-overlay {
   position: fixed;
@@ -51,17 +51,182 @@
 .signin-modal-title {
   font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   color: var(--text-primary, #f1f5f9);
 }
 
-.signin-modal-coming-soon {
-  font-size: 1.8rem;
-  margin-bottom: 12px;
+/* OAuth buttons */
+.signin-oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
-.signin-modal-description {
-  font-size: 0.95rem;
+.signin-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: var(--radius-md, 8px);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #f1f5f9);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.signin-oauth-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.signin-oauth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.signin-oauth-google svg {
+  flex-shrink: 0;
+}
+
+.signin-oauth-github {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.signin-oauth-github:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Divider */
+.signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
   color: var(--text-secondary, #94a3b8);
-  line-height: 1.6;
+  font-size: 0.85rem;
+}
+
+.signin-divider::before,
+.signin-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, rgba(255, 255, 255, 0.1));
+}
+
+/* Email form */
+.signin-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.signin-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: var(--radius-md, 8px);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #f1f5f9);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.signin-input::placeholder {
+  color: var(--text-secondary, #64748b);
+}
+
+.signin-input:focus {
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.signin-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Error display */
+.signin-error {
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+/* Submit button */
+.signin-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  background: var(--accent, #6366f1);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.signin-submit-btn:hover:not(:disabled) {
+  background: var(--accent-hover, #4f46e5);
+}
+
+.signin-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+.signin-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: signin-spin 0.6s linear infinite;
+}
+
+@keyframes signin-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Toggle link */
+.signin-toggle {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.signin-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--accent, #6366f1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.signin-toggle-btn:hover {
+  color: var(--accent-hover, #4f46e5);
 }

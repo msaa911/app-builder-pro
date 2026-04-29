@@ -1,5 +1,5 @@
 /**
- * LandingPage.signin.test.tsx — LPL-011
+ * LandingPage.signin.test.tsx — LPL-011, AUTH-008
  * Tests for LandingPage SignInModal integration
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -26,7 +26,7 @@ vi.mock('../components/privacy/PrivacyPolicyModal', () => ({
 
 import LandingPage from '../pages/LandingPage';
 
-describe('LandingPage SignInModal integration (LPL-011)', () => {
+describe('LandingPage SignInModal integration (LPL-011, AUTH-008)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

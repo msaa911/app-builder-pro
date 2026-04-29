@@ -109,3 +109,24 @@
   height: 100%;
   width: 100%;
 }
+
+/* Auth loading state — AUTH-010 */
+.builder-auth-loading {
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-top-color: var(--accent-primary, #22d3ee);
+  border-radius: 50%;
+  animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

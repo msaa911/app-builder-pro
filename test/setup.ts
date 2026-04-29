@@ -1,5 +1,30 @@
 import { vi } from 'vitest'
+import React from 'react';
 import '@testing-library/jest-dom';
+
+// ===== Global AuthContext mock — AUTH-007 =====
+// Default: authenticated user. Individual tests can override via vi.mock() in their file.
+vi.mock('../src/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com',
+      user_metadata: {
+        full_name: 'Test User',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=TestUser',
+      },
+    },
+    session: { access_token: 'test-token' },
+    loading: false,
+    login: vi.fn(),
+    signup: vi.fn(),
+    loginWithOAuth: vi.fn(),
+    logout: vi.fn(),
+    error: null,
+    clearError: vi.fn(),
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 // Mock localStorage with actual storage implementation for jsdom
 const createStorageMock = () => {

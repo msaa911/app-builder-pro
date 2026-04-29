@@ -1,14 +1,14 @@
 /**
  * useSupabaseOAuth Hook
  *
- * OAuth authentication hook for Supabase integration.
- * Manages the complete OAuth flow including token lifecycle, storage, and expiration.
+ * OAuth hook for Supabase backend project management.
+ * Uses the shared Supabase client from `src/lib/supabase.ts` (AUTH-002).
  *
- * ## Security Architecture (Phase 5 - Token Storage Migration)
+ * ## Security Architecture
  *
- * - **Token Storage**: Tokens are stored in-memory by the Supabase SDK (NOT sessionStorage).
- *   This eliminates XSS token theft vectors — session is lost on tab close,
- *   requiring re-authentication (acceptable UX tradeoff for security).
+ * - **Token Storage**: Sessions persist in localStorage (persistSession: true)
+ *   via the shared Supabase client. This enables persistent auth UX across
+ *   tab closes while relying on the SDK's built-in XSS mitigations.
  * - **Session Management**: Uses `supabase.auth.getSession()` for token retrieval
  *   and `supabase.auth.onAuthStateChange()` for reactive session updates.
  * - **Expiration Handling**: SDK handles token refresh automatically. When session
@@ -22,16 +22,16 @@
  * ```tsx
  * import { useSupabaseOAuth } from '@/hooks/backend/oauth';
  *
- * function LoginButton() {
+ * function BackendButton() {
  *   const { login, logout, isAuthenticated, status, error } = useSupabaseOAuth();
  *
  *   if (isAuthenticated) {
- *     return <button onClick={logout}>Logout</button>;
+ *     return <button onClick={logout}>Disconnect Supabase</button>;
  *   }
  *
  *   return (
  *     <button onClick={login} disabled={status === 'authenticating'}>
- *       Login with Supabase
+ *       Connect Supabase
  *     </button>
  *   );
  * }
@@ -39,29 +39,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createClient, type Session, type Subscription } from '@supabase/supabase-js';
+import { type Session, type Subscription } from '@supabase/supabase-js';
+import { supabaseClient } from '../../../lib/supabase';
 import { supabaseOAuthConfig } from '../../../config/supabase';
 import type { OAuthStatus } from './types';
-
-/**
- * Creates a Supabase client configured for in-memory token storage.
- *
- * By default, @supabase/supabase-js v2 stores tokens in localStorage.
- * We explicitly set `persistSession: false` to force in-memory-only storage,
- * which eliminates XSS token theft vectors at the cost of losing the session
- * on tab close (user must re-authenticate).
- */
-const supabaseClient = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-  {
-    auth: {
-      persistSession: false, // In-memory only — no sessionStorage, no localStorage
-      autoRefreshToken: true, // SDK handles silent token refresh
-      detectSessionInUrl: true, // Auto-detect OAuth callback tokens in URL hash
-    },
-  }
-);
 
 /** Keys to clear from sessionStorage on auth cleanup (leftover from pre-migration) */
 const LEGACY_SESSION_KEYS = ['sb-access-token'];
@@ -151,16 +132,15 @@ function handleAuthEvent(
 }
 
 /**
- * Supabase OAuth hook for managing authentication.
+ * Supabase OAuth hook for managing backend project authentication.
  *
- * Uses the Supabase JS SDK for all token management — tokens are stored
- * in-memory by the SDK and never written to sessionStorage or localStorage.
+ * Uses the shared Supabase JS SDK client for all token management.
  *
  * @returns An object containing:
- * - `login` - Initiates the OAuth flow
+ * - `login` - Initiates the OAuth flow for Supabase dashboard access
  * - `logout` - Clears the session and redirects
  * - `getToken` - Retrieves the current valid access token from the SDK
- * - `isAuthenticated` - Whether user is authenticated
+ * - `isAuthenticated` - Whether user is authenticated with Supabase dashboard
  * - `status` - Current OAuth status
  * - `error` - Error object if authentication failed
  */
@@ -174,7 +154,6 @@ export function useSupabaseOAuth() {
 
   /**
    * Retrieves the current valid access token from the Supabase SDK.
-   * The SDK stores tokens in-memory and handles refresh automatically.
    *
    * @returns The valid access token or null if not authenticated
    */
@@ -202,7 +181,7 @@ export function useSupabaseOAuth() {
   }, []);
 
   /**
-   * Initiates the OAuth flow by redirecting to Supabase.
+   * Initiates the OAuth flow by redirecting to Supabase dashboard.
    * Will redirect the browser to the Supabase OAuth page.
    */
   const login = useCallback(async () => {

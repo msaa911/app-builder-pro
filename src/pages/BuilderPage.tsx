@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import TopBar from '../components/common/TopBar';
 import ChatPanel from '../components/chat/ChatPanel';
 import PreviewPanel from '../components/preview/PreviewPanel';
@@ -18,6 +18,7 @@ import { filesToTree } from '../services/webcontainer/fileSystem';
 import { WebContainerManager } from '../services/webcontainer/WebContainerManager';
 import { isBinaryFile } from '../utils/binaryExtensions';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useAIBuilder } from '../hooks/useAIBuilder';
 import { useWebContainer } from '../hooks/useWebContainer';
 import { useConsoleLogs } from '../hooks/useConsoleLogs';
@@ -28,6 +29,7 @@ import { useVercelOAuth, useVercelDeploy } from '../hooks/deploy';
 import { DeployStage } from '../hooks/deploy/types';
 import { adaptProject } from '../services/adapter';
 import SettingsModal from '../components/settings/SettingsModal';
+import SignInModal from '../components/common/SignInModal';
 import { PipelineStage } from '../hooks/backend/pipeline/types';
 import { getGenericErrorMessage, logErrorSafe, logWarnSafe } from '../utils/logger';
 import { mergeFiles } from '../utils/mergeFiles';
@@ -42,6 +44,18 @@ import '../components/common/Toast.css';
 const BuilderPageInner: React.FC = () => {
   const { projectId } = useParams<{ projectId?: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Auth guard — AUTH-010, AUTH-011
+  const { user, loading: authLoading } = useAuth();
+  const [isSignInOpen, setIsSignInOpen] = useState(false);
+
+  // Redirect unauthenticated users to landing — AUTH-010
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/', { replace: true });
+    }
+  }, [authLoading, user, navigate]);
   // Route state provides prompt via navigate('/builder', { state: { prompt } })
   const initialPrompt = (location.state as any)?.prompt ?? '';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -930,6 +944,20 @@ const BuilderPageInner: React.FC = () => {
     fileTree.refresh,
   ]);
 
+  // Show loading while auth state resolves — AUTH-010
+  if (authLoading) {
+    return (
+      <div className="builder-container builder-auth-loading">
+        <div className="auth-loading-spinner" />
+      </div>
+    );
+  }
+
+  // Auth guard: don't render builder if not authenticated
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="builder-container">
       <TopBar
@@ -951,6 +979,7 @@ const BuilderPageInner: React.FC = () => {
         onRenameProject={persistence.renameProject}
         isShareDisabled={!persistence.activeProjectId}
         onShare={handleShare}
+        onSignIn={() => setIsSignInOpen(true)}
       />
 
       <main className="builder-main">
@@ -1072,10 +1101,12 @@ const BuilderPageInner: React.FC = () => {
           onAbort={handleAbortDeploy}
         />
       )}
-      {showDeploySuccess && deployResult && (
-        <DeploySuccess result={deployResult} onDone={handleCloseDeploySuccess} />
-      )}
-    </div>
+        {showDeploySuccess && deployResult && (
+          <DeploySuccess result={deployResult} onDone={handleCloseDeploySuccess} />
+        )}
+        {/* Auth: Sign-in modal — AUTH-008 */}
+        <SignInModal isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />
+      </div>
   );
 };
 

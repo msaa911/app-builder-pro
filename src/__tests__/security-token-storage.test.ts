@@ -105,23 +105,23 @@ describe('SEC-03: Token Storage Security', () => {
   // ============ Scenario 3: Supabase client configured with persistSession: false ============
 
   describe('Supabase client configuration', () => {
-    it('should have persistSession set to false in the client config', async () => {
-      // We verify this by checking the module source code
-      // The createClient call MUST have auth.persistSession: false
-      const fs = await import('fs');
-      const path = await import('path');
-      const filePath = path.resolve(__dirname, '../hooks/backend/oauth/useSupabaseOAuth.ts');
-      const content = fs.readFileSync(filePath, 'utf-8');
+  it('should have persistSession set to true in the shared client config (auth-user-accounts)', async () => {
+    // The shared Supabase client at src/lib/supabase.ts is used for user auth
+    // persistSession: true enables persistent sessions (localStorage by default)
+    const fs = await import('fs');
+    const path = await import('path');
+    const filePath = path.resolve(__dirname, '../lib/supabase.ts');
+    const content = fs.readFileSync(filePath, 'utf-8');
 
-      // Verify persistSession: false is present
-      expect(content).toContain('persistSession: false');
+    // Verify persistSession: true is present (user auth requires persistent sessions)
+    expect(content).toContain('persistSession: true');
 
-      // Verify autoRefreshToken: true (SDK handles refresh)
-      expect(content).toContain('autoRefreshToken: true');
+    // Verify autoRefreshToken: true (SDK handles refresh)
+    expect(content).toContain('autoRefreshToken: true');
 
-      // Verify detectSessionInUrl: true (for OAuth callbacks)
-      expect(content).toContain('detectSessionInUrl: true');
-    });
+    // Verify detectSessionInUrl: true (for OAuth callbacks)
+    expect(content).toContain('detectSessionInUrl: true');
+  });
 
     it('should use supabase.auth.getSession() for token retrieval, not sessionStorage', async () => {
       const fs = await import('fs');
