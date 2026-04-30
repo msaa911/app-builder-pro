@@ -27,13 +27,10 @@ jobs:
       - name: Run all tests with coverage thresholds
         run: npm run test:run -- --coverage
 
-      - name: Run security tests
-        run: npx vitest run src/__tests__/security-credentials.test.ts src/__tests__/security-csp.test.ts src/__tests__/security-token-storage.test.tsx src/__tests__/security-error-handling.test.ts src/__tests__/security-sessionStorage.test.tsx src/__tests__/security-prompt-logging.test.ts
+    - name: Run security tests
+      run: npx vitest run src/__tests__/security-credentials.test.ts src/__tests__/security-csp.test.ts src/__tests__/security-token-storage.test.tsx src/__tests__/security-error-handling.test.ts src/__tests__/security-sessionStorage.test.tsx src/__tests__/security-prompt-logging.test.ts
 
-      - name: Generate security test coverage
-        run: npm run test:run -- --coverage src/__tests__/security-credentials.test.ts src/__tests__/security-csp.test.ts src/__tests__/security-token-storage.test.tsx src/__tests__/security-error-handling.test.ts src/__tests__/security-sessionStorage.test.tsx src/__tests__/security-prompt-logging.test.ts
-
-      - name: Report security test coverage summary
+    - name: Report security test coverage summary
         if: always()
         run: |
           echo "## Security Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
