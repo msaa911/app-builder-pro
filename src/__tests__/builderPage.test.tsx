@@ -236,6 +236,23 @@ vi.mock('../components/deploy/DeploySuccess', () => ({
   ),
 }));
 
+vi.mock('../lib/supabase', () => ({
+  supabaseClient: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+    },
+  },
+  default: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+    },
+  },
+}));
+
 // Valores por defecto para los mocks
 const mockGenerate = vi.fn();
 const mockMount = vi.fn().mockResolvedValue(undefined);

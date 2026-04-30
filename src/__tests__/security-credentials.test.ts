@@ -136,13 +136,14 @@ describe('SEC-01: Credential Exposure Prevention', () => {
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
 
-        // Skip node_modules, dist, .git, test directories
+        // Skip node_modules, dist, .git, test directories, and fixtures
         if (
           entry.name === 'node_modules' ||
           entry.name === 'dist' ||
           entry.name === '.git' ||
           entry.name.startsWith('.') ||
           entry.name === '__tests__' ||
+          entry.name === '__fixtures__' ||
           entry.name === 'test' ||
           entry.name === 'scripts'
         ) {

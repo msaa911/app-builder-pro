@@ -47,6 +47,22 @@ vi.mock('../components/common/Toast', () => ({
   ToastProvider: ({ children }: any) => <>{children}</>,
   useToast: () => ({ showToast: vi.fn() }),
 }));
+vi.mock('../lib/supabase', () => ({
+  supabaseClient: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+    },
+  },
+  default: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+    },
+  },
+}));
 
 // Lazy-import App AFTER mocks are set up
 import App from '../App';
