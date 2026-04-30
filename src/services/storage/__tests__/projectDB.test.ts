@@ -32,7 +32,7 @@ vi.mock('idb', () => ({
 }));
 
 import { projectDB } from '../projectDB';
-import type { PersistedProject, PersistedMessage } from '../types';
+import type { PersistedProject, PersistedMessage, PersistedSnapshot } from '../types';
 
 describe('projectDB', () => {
   beforeEach(() => {
@@ -257,6 +257,133 @@ describe('projectDB', () => {
       mockDb.getAll.mockResolvedValue([]);
       const count = await projectDB.getProjectCount();
       expect(count).toBe(0);
+    });
+  });
+
+  // ─── Snapshot CRUD (version-history-undo Phase 1) ────────────────────
+
+  describe('saveSnapshot', () => {
+    it('should save a snapshot to the snapshots store', async () => {
+      const snapshot: PersistedSnapshot = {
+        id: 'snap1',
+        projectId: 'proj1',
+        files: [{ path: 'src/App.tsx', content: 'x' }],
+        trigger: 'refine',
+        messageIndex: 3,
+        createdAt: 1700000000000,
+      };
+      mockDb.put.mockResolvedValue('snap1');
+
+      await projectDB.saveSnapshot(snapshot);
+
+      expect(mockDb.put).toHaveBeenCalledWith('snapshots', snapshot);
+    });
+  });
+
+  describe('getSnapshots', () => {
+    it('should return all snapshots for a project sorted by createdAt desc', async () => {
+      const snapshots: PersistedSnapshot[] = [
+        {
+          id: 'snap1',
+          projectId: 'proj1',
+          files: [{ path: 'a.tsx', content: 'old' }],
+          trigger: 'refine',
+          messageIndex: 1,
+          createdAt: 1000,
+        },
+        {
+          id: 'snap2',
+          projectId: 'proj1',
+          files: [{ path: 'a.tsx', content: 'new' }],
+          trigger: 'editor-save',
+          messageIndex: null,
+          createdAt: 3000,
+        },
+      ];
+      mockDb.getAllFromIndex.mockResolvedValue(snapshots);
+
+      const result = await projectDB.getSnapshots('proj1');
+
+      expect(mockDb.getAllFromIndex).toHaveBeenCalledWith('snapshots', 'by-projectId', 'proj1');
+      expect(result).toHaveLength(2);
+      // Sorted by createdAt desc (newest first)
+      expect(result[0].id).toBe('snap2');
+      expect(result[1].id).toBe('snap1');
+    });
+
+    it('should return empty array when no snapshots exist', async () => {
+      mockDb.getAllFromIndex.mockResolvedValue([]);
+      const result = await projectDB.getSnapshots('proj1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getSnapshotCount', () => {
+    it('should return the number of snapshots for a project', async () => {
+      mockDb.getAllFromIndex.mockResolvedValue([{ id: 's1' }, { id: 's2' }]);
+
+      const count = await projectDB.getSnapshotCount('proj1');
+
+      expect(mockDb.getAllFromIndex).toHaveBeenCalledWith('snapshots', 'by-projectId', 'proj1');
+      expect(count).toBe(2);
+    });
+
+    it('should return 0 when no snapshots exist', async () => {
+      mockDb.getAllFromIndex.mockResolvedValue([]);
+      const count = await projectDB.getSnapshotCount('proj1');
+      expect(count).toBe(0);
+    });
+  });
+
+  describe('deleteSnapshot', () => {
+    it('should delete a snapshot by id', async () => {
+      mockDb.delete.mockResolvedValue(undefined);
+
+      await projectDB.deleteSnapshot('snap1');
+
+      expect(mockDb.delete).toHaveBeenCalledWith('snapshots', 'snap1');
+    });
+  });
+
+  describe('deleteSnapshots', () => {
+    it('should delete all snapshots for a project via transaction', async () => {
+      const snapshots: PersistedSnapshot[] = [
+        {
+          id: 'snap1',
+          projectId: 'proj1',
+          files: [{ path: 'a.tsx', content: 'x' }],
+          trigger: 'refine',
+          messageIndex: 0,
+          createdAt: 1000,
+        },
+        {
+          id: 'snap2',
+          projectId: 'proj1',
+          files: [{ path: 'b.tsx', content: 'y' }],
+          trigger: 'editor-save',
+          messageIndex: null,
+          createdAt: 2000,
+        },
+      ];
+      mockDb.getAllFromIndex.mockResolvedValue(snapshots);
+      mockStore.delete.mockResolvedValue(undefined);
+
+      await projectDB.deleteSnapshots('proj1');
+
+      expect(mockDb.transaction).toHaveBeenCalledWith('snapshots', 'readwrite');
+      expect(mockStore.delete).toHaveBeenCalledTimes(2);
+      expect(mockStore.delete).toHaveBeenCalledWith('snap1');
+      expect(mockStore.delete).toHaveBeenCalledWith('snap2');
+    });
+
+    it('should handle empty snapshots gracefully (no transaction)', async () => {
+      mockDb.getAllFromIndex.mockResolvedValue([]);
+
+      await projectDB.deleteSnapshots('proj1');
+
+      // Should not open a transaction if no snapshots to delete
+      // Note: transaction may have been called by prior test — check delete calls instead
+      expect(mockStore.delete).not.toHaveBeenCalled();
     });
   });
 });

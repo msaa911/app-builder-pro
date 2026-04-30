@@ -12,6 +12,7 @@ import {
   Cloud,
   LogOut,
   User,
+  History,
 } from 'lucide-react';
 import { type BuilderState } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
@@ -49,6 +50,8 @@ interface TopBarProps {
   isShareDisabled?: boolean;
   /** Callback when Share button is clicked — clipboard logic in BuilderPage */
   onShare?: () => void;
+  /** Callback when History button is clicked — version-history-undo */
+  onOpenHistory?: () => void;
   /** Callback when Sign In button is clicked (opens SignInModal) — AUTH-008 */
   onSignIn?: () => void;
 }
@@ -72,6 +75,7 @@ const TopBar: React.FC<TopBarProps> = ({
   onRenameProject,
   isShareDisabled = true,
   onShare,
+  onOpenHistory,
   onSignIn,
 }) => {
   // Auth context — AUTH-007, AUTH-008, AUTH-009
@@ -237,11 +241,21 @@ const TopBar: React.FC<TopBarProps> = ({
           <Rocket size={16} />
           <span>Publish App</span>
         </button>
-        <div className="divider"></div>
-        <QuotaStatus />
-        <button className="btn-icon" onClick={onOpenSettings}>
-          <Settings size={18} />
-        </button>
+    <div className="divider"></div>
+    <QuotaStatus />
+    {onOpenHistory && (
+      <button
+        className="btn-icon"
+        onClick={onOpenHistory}
+        data-testid="btn-open-history"
+        title="Version History"
+      >
+        <History size={18} />
+      </button>
+    )}
+    <button className="btn-icon" onClick={onOpenSettings}>
+      <Settings size={18} />
+    </button>
 
         {/* Auth-aware user section — AUTH-007, AUTH-008, AUTH-009 */}
         {isAuthenticated ? (

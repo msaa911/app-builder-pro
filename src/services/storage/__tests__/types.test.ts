@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { PersistedProject, PersistedMessage, ProjectMeta, StorageSchema } from '../types';
-import { SCHEMA_VERSION, DB_NAME, DB_VERSION, PERSISTED_FIELDS, SENSITIVE_FIELDS } from '../types';
+import type { PersistedProject, PersistedMessage, ProjectMeta, StorageSchema, PersistedSnapshot, SnapshotTrigger } from '../types';
+import { SCHEMA_VERSION, DB_NAME, DB_VERSION, PERSISTED_FIELDS, SENSITIVE_FIELDS, STORE_NAMES } from '../types';
 
 describe('Storage types and constants', () => {
   describe('PersistedProject', () => {
@@ -92,10 +92,11 @@ describe('Storage types and constants', () => {
 
   describe('StorageSchema', () => {
     it('should define projects and messages store names', () => {
-      const schema: StorageSchema = {
-        projects: 'projects',
-        messages: 'messages',
-      };
+  const schema: StorageSchema = {
+    projects: 'projects',
+    messages: 'messages',
+    snapshots: 'snapshots',
+  };
 
       expect(schema.projects).toBe('projects');
       expect(schema.messages).toBe('messages');
@@ -111,8 +112,8 @@ describe('Storage types and constants', () => {
       expect(DB_NAME).toBe('app-builder-projects');
     });
 
-    it('DB_VERSION should be 1 (D1)', () => {
-      expect(DB_VERSION).toBe(1);
+    it('DB_VERSION should be 2 (D1 + snapshots store)', () => {
+      expect(DB_VERSION).toBe(2);
     });
 
     it('PERSISTED_FIELDS should include allowlist fields per D5', () => {
@@ -258,6 +259,97 @@ describe('Storage types and constants', () => {
       };
 
       expect(meta.fileCount).toBe(100);
+    });
+  });
+
+  // ─── PersistedSnapshot + SnapshotTrigger (version-history-undo Phase 1) ──
+
+  describe('PersistedSnapshot', () => {
+    it('should accept a valid PersistedSnapshot with all required fields', () => {
+      const snapshot: PersistedSnapshot = {
+        id: 'snap123abc456',
+        projectId: 'proj1',
+        files: [{ path: 'src/App.tsx', content: 'export default App' }],
+        trigger: 'refine',
+        messageIndex: 3,
+        createdAt: 1700000000000,
+      };
+
+      expect(snapshot.id).toBe('snap123abc456');
+      expect(snapshot.projectId).toBe('proj1');
+      expect(snapshot.files).toHaveLength(1);
+      expect(snapshot.trigger).toBe('refine');
+      expect(snapshot.messageIndex).toBe(3);
+      expect(snapshot.createdAt).toBe(1700000000000);
+    });
+
+    it('should accept PersistedSnapshot with trigger "editor-save" and null messageIndex', () => {
+      const snapshot: PersistedSnapshot = {
+        id: 'snap789xyz012',
+        projectId: 'proj2',
+        files: [{ path: 'index.html', content: '<html></html>' }],
+        trigger: 'editor-save',
+        messageIndex: null,
+        createdAt: 1700000001000,
+      };
+
+      expect(snapshot.trigger).toBe('editor-save');
+      expect(snapshot.messageIndex).toBeNull();
+    });
+
+    it('should accept PersistedSnapshot with multiple files', () => {
+      const files = Array.from({ length: 10 }, (_, i) => ({
+        path: `src/file${i}.tsx`,
+        content: `export const File${i} = () => null`,
+      }));
+
+      const snapshot: PersistedSnapshot = {
+        id: 'snap-multi',
+        projectId: 'proj3',
+        files,
+        trigger: 'refine',
+        messageIndex: 0,
+        createdAt: 1700000002000,
+      };
+
+      expect(snapshot.files).toHaveLength(10);
+      expect(snapshot.files[0].path).toBe('src/file0.tsx');
+    });
+  });
+
+  describe('SnapshotTrigger', () => {
+    it('should only allow "refine" and "editor-save" as valid trigger values', () => {
+      const refine: SnapshotTrigger = 'refine';
+      const editorSave: SnapshotTrigger = 'editor-save';
+
+      expect(refine).toBe('refine');
+      expect(editorSave).toBe('editor-save');
+    });
+  });
+
+  describe('StorageSchema — with snapshots', () => {
+    it('should define projects, messages, and snapshots store names', () => {
+      const schema: StorageSchema = {
+        projects: 'projects',
+        messages: 'messages',
+        snapshots: 'snapshots',
+      };
+
+      expect(schema.projects).toBe('projects');
+      expect(schema.messages).toBe('messages');
+      expect(schema.snapshots).toBe('snapshots');
+    });
+  });
+
+  describe('STORE_NAMES — with snapshots', () => {
+    it('should include snapshots store name', () => {
+      expect(STORE_NAMES.snapshots).toBe('snapshots');
+    });
+  });
+
+  describe('DB_VERSION — v2 for snapshots store', () => {
+    it('should be 2 after adding snapshots store', () => {
+      expect(DB_VERSION).toBe(2);
     });
   });
 });

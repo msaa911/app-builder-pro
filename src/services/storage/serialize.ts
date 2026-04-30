@@ -1,4 +1,4 @@
-import type { PersistedProject, PersistedMessage } from './types';
+import type { PersistedProject, PersistedMessage, PersistedSnapshot } from './types';
 import type { ProjectFile, ChatMessage } from '../../types/index';
 import { SCHEMA_VERSION } from './types';
 
@@ -83,4 +83,43 @@ export function deserializeMessages(messages: PersistedMessage[]): ChatMessage[]
     ...(msg.files && { files: msg.files }),
     timestamp: msg.timestamp,
   }));
+}
+
+// ─── serializeSnapshot (version-history-undo) ────────────────────────
+// Deep-clones files into a PersistedSnapshot for IDB storage.
+// Uses structuredClone() for deep isolation — design decision.
+
+interface SerializeSnapshotInput {
+  id: string;
+  projectId: string;
+  files: ProjectFile[];
+  trigger: 'refine' | 'editor-save';
+  messageIndex: number | null;
+  createdAt: number;
+}
+
+export function serializeSnapshot(input: SerializeSnapshotInput): PersistedSnapshot {
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    files: structuredClone(input.files),
+    trigger: input.trigger,
+    messageIndex: input.messageIndex,
+    createdAt: input.createdAt,
+  };
+}
+
+// ─── deserializeSnapshot (version-history-undo) ──────────────────────
+// Returns a deep-cloned copy of the snapshot so the persisted
+// record is never mutated by consumers.
+
+export function deserializeSnapshot(snapshot: PersistedSnapshot): PersistedSnapshot {
+  return {
+    id: snapshot.id,
+    projectId: snapshot.projectId,
+    files: structuredClone(snapshot.files),
+    trigger: snapshot.trigger,
+    messageIndex: snapshot.messageIndex,
+    createdAt: snapshot.createdAt,
+  };
 }

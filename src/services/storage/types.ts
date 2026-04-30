@@ -5,8 +5,8 @@ import type { ProjectFile, ChatMessage, BuilderState } from '../../types/index';
 /** IDB database name — design decision D1 */
 export const DB_NAME = 'app-builder-projects' as const;
 
-/** IDB database version — design decision D1 */
-export const DB_VERSION = 1 as const;
+/** IDB database version — bumped to 2 for snapshots store (D1 + version-history) */
+export const DB_VERSION = 2 as const;
 
 /** Schema version stored on each project record — D9 */
 export const SCHEMA_VERSION = 1 as const;
@@ -16,11 +16,13 @@ export const SCHEMA_VERSION = 1 as const;
 export interface StorageSchema {
   projects: 'projects';
   messages: 'messages';
+  snapshots: 'snapshots';
 }
 
 export const STORE_NAMES: StorageSchema = {
   projects: 'projects',
   messages: 'messages',
+  snapshots: 'snapshots',
 } as const;
 
 // ─── Allowlist Fields (D5) ────────────────────────────────────────────
@@ -89,6 +91,26 @@ export interface PersistedMessage {
   files?: ProjectFile[];
   /** Message timestamp (epoch ms) */
   timestamp: number;
+}
+
+// ─── Persisted Snapshot (version-history-undo) ────────────────────────
+
+/** Snapshot trigger — what caused the snapshot to be created */
+export type SnapshotTrigger = 'refine' | 'editor-save';
+
+export interface PersistedSnapshot {
+  /** Snapshot ID — nanoid(12) */
+  id: string;
+  /** Foreign key to PersistedProject.id */
+  projectId: string;
+  /** Deep-cloned file state at time of snapshot */
+  files: ProjectFile[];
+  /** What triggered this snapshot */
+  trigger: SnapshotTrigger;
+  /** Message index for refine triggers; null for editor-save */
+  messageIndex: number | null;
+  /** Creation timestamp (epoch ms) */
+  createdAt: number;
 }
 
 // ─── Project Meta (lightweight listing) ───────────────────────────────

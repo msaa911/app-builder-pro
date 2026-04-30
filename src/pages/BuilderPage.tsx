@@ -35,6 +35,8 @@ import { getGenericErrorMessage, logErrorSafe, logWarnSafe } from '../utils/logg
 import { mergeFiles } from '../utils/mergeFiles';
 import { computeFileDiff, formatDiffSummary } from '../utils/fileDiff';
 import { useProjectPersistence } from '../hooks/useProjectPersistence';
+import { useVersionHistory } from '../hooks/useVersionHistory';
+import VersionHistoryPanel from '../components/common/VersionHistoryPanel';
 import './BuilderPage.css';
 import '../components/common/Toast.css';
 
@@ -125,6 +127,10 @@ const BuilderPageInner: React.FC = () => {
 
   // Project persistence hook (PP-003, PP-004, PP-005)
   const persistence = useProjectPersistence();
+
+  // Version history hook (version-history-undo)
+  const versionHistory = useVersionHistory(persistence.activeProjectId);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Deploy modal state
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
@@ -257,8 +263,12 @@ const BuilderPageInner: React.FC = () => {
       });
   }, [initialPrompt, projectId, persistence.projectList]);
 
-  // Pre-refine snapshot for Undo (ITR-009)
-  const preRefineSnapshot = useRef<ProjectFile[] | null>(null);
+// ── Version History: Snapshot before refine ────────────────────────
+
+// Ref for handleRestoreFiles — avoids stale closure / TDZ in toast callbacks
+  const handleRestoreFilesRef = useRef<
+    ((restoredFiles: ProjectFile[]) => Promise<void>) | null
+  >(null);
 
   const handleNewMessage = useCallback(
     async (content: string) => {
@@ -280,12 +290,13 @@ const BuilderPageInner: React.FC = () => {
         // ITR-002: Route between generate (first message) and refine (follow-ups)
         const isRefine = currentFiles.length > 0;
 
-        let response;
-        if (isRefine) {
-          // ITR-009: Save pre-refine snapshot for Undo
-          preRefineSnapshot.current = [...currentFiles];
-          response = await refine(currentFiles, content, getEffectiveApiKey(), modelId);
-        } else {
+    let response;
+    if (isRefine) {
+      // version-history-undo: create snapshot before refine
+      const messageIndex = messages.length; // current count = index of the new user message
+      await versionHistory.createSnapshot(currentFiles, 'refine', messageIndex);
+      response = await refine(currentFiles, content, getEffectiveApiKey(), modelId);
+    } else {
           response = await generate(content, getEffectiveApiKey(), modelId);
         }
 
@@ -348,23 +359,27 @@ const BuilderPageInner: React.FC = () => {
               setBuilderState('running');
             }
 
-            // ITR-007: Show overwrite warning toast with Undo action (ITR-009)
-            if (overwrittenPaths.length > 0) {
-              showToast({
-                message: `AI overwrote ${overwrittenPaths.length} file(s)`,
-                type: 'warn',
-                duration: 8000,
-                action: {
-                  label: 'Undo',
-                  callback: () => {
-                    if (preRefineSnapshot.current) {
-                      setCurrentFiles(preRefineSnapshot.current);
-                      preRefineSnapshot.current = null;
-                    }
-                  },
-                },
-              });
-            }
+        // ITR-007: Show overwrite warning toast with Undo action (version-history-undo)
+        if (overwrittenPaths.length > 0) {
+          showToast({
+            message: `AI overwrote ${overwrittenPaths.length} file(s)`,
+            type: 'warn',
+            duration: 8000,
+            action: {
+              label: 'Undo',
+              callback: async () => {
+                // Restore the most recent snapshot
+                const latest = versionHistory.snapshots[0];
+                if (latest) {
+                  const files = await versionHistory.restoreSnapshot(latest.id);
+                  if (files) {
+                    handleRestoreFilesRef.current?.(files);
+                  }
+                }
+              },
+            },
+          });
+        }
           } else {
             // First message — full mount path
             setCurrentFiles(response.files);
@@ -408,21 +423,25 @@ const BuilderPageInner: React.FC = () => {
         setBuilderState('error');
       }
     },
-    [
-      currentFiles,
-      generate,
-      refine,
-      mount,
-      install,
-      runDev,
-      updateFiles,
-      getEffectiveApiKey,
-      modelId,
-      resetBackend,
-      showToast,
-      fileTree.refresh,
-      persistence,
-    ]
+  [
+    currentFiles,
+    messages,
+    generate,
+    refine,
+    mount,
+    install,
+    runDev,
+    updateFiles,
+    getEffectiveApiKey,
+    modelId,
+    resetBackend,
+    showToast,
+    fileTree.refresh,
+    persistence,
+    versionHistory.createSnapshot,
+    versionHistory.snapshots,
+    versionHistory.restoreSnapshot,
+  ]
   );
 
   // Handler for retry after build error
@@ -436,8 +455,83 @@ const BuilderPageInner: React.FC = () => {
     setCurrentFiles([]);
     setMessages([]);
     setBuilderState('idle');
-    preRefineSnapshot.current = null;
   }, []);
+
+  // ── Version History: Restore files from snapshot ──────────────────
+  // Detects package.json changes → remount or updateFiles
+  const handleRestoreFiles = useCallback(
+    async (restoredFiles: ProjectFile[]) => {
+      // Detect package.json change between current and restored state
+      const hasPackageJsonChange = computeFileDiff(currentFiles, restoredFiles).some(
+        (diff) => diff.path === 'package.json' || diff.path === '/package.json'
+      );
+
+      setCurrentFiles(restoredFiles);
+      setActiveFile(
+        restoredFiles.find((f) => f.path.includes('App.tsx')) || restoredFiles[0]
+      );
+
+      if (hasPackageJsonChange) {
+        // Full remount needed — package.json changed
+        setBuilderState('installing');
+        const tree = filesToTree(restoredFiles);
+        await mount(tree);
+        await install(addLog);
+        await fileTree.refresh();
+        setBuilderState('running');
+        setIsDevRunning(true);
+        setHasDevCrashed(false);
+        await runDev(addLog, (url) => {
+          setPreviewUrl(url);
+        });
+      } else {
+        // Partial update — only write changed files
+        const diffs = computeFileDiff(currentFiles, restoredFiles);
+      const changedFiles = diffs
+        .map((d) => {
+            const file = restoredFiles.find((f) => f.path === d.path);
+            return file!;
+          })
+          .filter(Boolean);
+
+        if (changedFiles.length > 0) {
+          await updateFiles(changedFiles);
+          await fileTree.refresh();
+        }
+      }
+
+      showToast({ message: 'Version restored', type: 'success' });
+    },
+    [currentFiles, mount, install, runDev, updateFiles, fileTree, showToast, addLog]
+  );
+
+  // Keep ref in sync so toast callbacks always call the latest version
+  handleRestoreFilesRef.current = handleRestoreFiles;
+
+  // Handler for restore from VersionHistoryPanel
+  const handleRestoreSnapshot = useCallback(
+    async (snapshotId: string) => {
+      const files = await versionHistory.restoreSnapshot(snapshotId);
+      if (files) {
+        await handleRestoreFiles(files);
+      }
+    },
+    [versionHistory, handleRestoreFiles]
+  );
+
+  // Handler for restore from ChatPanel per-message button
+  const handleChatRestoreSnapshot = useCallback(
+    async (messageIndex: number) => {
+      // Find snapshot with matching messageIndex (most recent for that index)
+      const snapshot = versionHistory.snapshots.find(
+        (s) => s.trigger === 'refine' && s.messageIndex === messageIndex
+      );
+      if (snapshot) {
+        await handleRestoreSnapshot(snapshot.id);
+      }
+    },
+    [versionHistory.snapshots, handleRestoreSnapshot]
+  );
 
   // Race guard counter for async file loads (FCL-004)
   const loadRequestRef = useRef(0);
@@ -496,6 +590,9 @@ const BuilderPageInner: React.FC = () => {
 
       setIsSavingFile(true);
       try {
+        // version-history-undo: create snapshot before editor save
+        await versionHistory.createSnapshot(currentFiles, 'editor-save', null);
+
         await writeFile(file.path, file.content);
 
         // Update currentFiles to reflect saved state (ES-010)
@@ -979,6 +1076,7 @@ const BuilderPageInner: React.FC = () => {
         onRenameProject={persistence.renameProject}
         isShareDisabled={!persistence.activeProjectId}
         onShare={handleShare}
+        onOpenHistory={() => setIsHistoryOpen(true)}
         onSignIn={() => setIsSignInOpen(true)}
       />
 
@@ -986,12 +1084,13 @@ const BuilderPageInner: React.FC = () => {
         <PanelGroup direction="horizontal">
           {/* Left Panel: Chat */}
           <Panel defaultSize={25} minSize={20} className="panel-chat">
-            <ChatPanel
-              messages={messages}
-              onSendMessage={handleNewMessage}
-              isGenerating={builderState === 'generating' || builderState === 'installing'}
-              onNewChat={handleNewChat}
-            />
+          <ChatPanel
+            messages={messages}
+            onSendMessage={handleNewMessage}
+            isGenerating={builderState === 'generating' || builderState === 'installing'}
+            onNewChat={handleNewChat}
+            onRestoreSnapshot={handleChatRestoreSnapshot}
+          />
           </Panel>
 
           <PanelResizeHandle className="resize-handle" />
@@ -1104,9 +1203,21 @@ const BuilderPageInner: React.FC = () => {
         {showDeploySuccess && deployResult && (
           <DeploySuccess result={deployResult} onDone={handleCloseDeploySuccess} />
         )}
-        {/* Auth: Sign-in modal — AUTH-008 */}
-        <SignInModal isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />
-      </div>
+      {/* Auth: Sign-in modal — AUTH-008 */}
+      <SignInModal isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />
+
+      {/* Version History panel — version-history-undo */}
+      {isHistoryOpen && (
+        <VersionHistoryPanel
+          snapshots={versionHistory.snapshots}
+          isLoading={versionHistory.isLoading}
+          isGenerating={versionHistory.isGenerating}
+          onRestore={handleRestoreSnapshot}
+          onDelete={versionHistory.deleteSnapshot}
+          onClose={() => setIsHistoryOpen(false)}
+        />
+      )}
+    </div>
   );
 };
 

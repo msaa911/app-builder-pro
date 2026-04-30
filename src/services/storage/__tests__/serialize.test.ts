@@ -4,8 +4,10 @@ import {
   deserializeProject,
   serializeMessages,
   deserializeMessages,
+  serializeSnapshot,
+  deserializeSnapshot,
 } from '../serialize';
-import type { PersistedProject } from '../types';
+import type { PersistedProject, PersistedSnapshot } from '../types';
 import type { ProjectFile, ChatMessage } from '../../../types/index';
 
 describe('serialize', () => {
@@ -220,6 +222,135 @@ describe('serialize', () => {
       expect(serialized).not.toContain('oauthToken');
       expect(serialized).not.toContain('isDevRunning');
       expect(serialized).not.toContain('hasDevCrashed');
+    });
+  });
+
+  // ─── serializeSnapshot / deserializeSnapshot (version-history-undo) ────
+
+  describe('serializeSnapshot', () => {
+    it('should serialize files into a PersistedSnapshot with refine trigger', () => {
+      const files: ProjectFile[] = [
+        { path: 'src/App.tsx', content: 'export default App' },
+        { path: 'package.json', content: '{"name": "test"}' },
+      ];
+
+      const result = serializeSnapshot({
+        id: 'snap1',
+        projectId: 'proj1',
+        files,
+        trigger: 'refine',
+        messageIndex: 5,
+        createdAt: 1700000000000,
+      });
+
+      expect(result.id).toBe('snap1');
+      expect(result.projectId).toBe('proj1');
+      expect(result.files).toEqual(files);
+      expect(result.trigger).toBe('refine');
+      expect(result.messageIndex).toBe(5);
+      expect(result.createdAt).toBe(1700000000000);
+    });
+
+    it('should serialize files with editor-save trigger and null messageIndex', () => {
+      const files: ProjectFile[] = [
+        { path: 'src/index.tsx', content: 'import React' },
+      ];
+
+      const result = serializeSnapshot({
+        id: 'snap2',
+        projectId: 'proj2',
+        files,
+        trigger: 'editor-save',
+        messageIndex: null,
+        createdAt: 1700000001000,
+      });
+
+      expect(result.trigger).toBe('editor-save');
+      expect(result.messageIndex).toBeNull();
+    });
+
+    it('should deep-clone files so original array is not shared', () => {
+      const files: ProjectFile[] = [
+        { path: 'src/App.tsx', content: 'original' },
+      ];
+
+      const result = serializeSnapshot({
+        id: 'snap3',
+        projectId: 'proj3',
+        files,
+        trigger: 'refine',
+        messageIndex: 0,
+        createdAt: 1700000002000,
+      });
+
+      // Mutating the result's files should NOT affect the original
+      result.files[0].content = 'mutated';
+      expect(files[0].content).toBe('original');
+    });
+  });
+
+  describe('deserializeSnapshot', () => {
+    it('should deserialize a PersistedSnapshot and return deep-cloned files', () => {
+      const persisted: PersistedSnapshot = {
+        id: 'snap1',
+        projectId: 'proj1',
+        files: [{ path: 'src/App.tsx', content: 'export default App' }],
+        trigger: 'refine',
+        messageIndex: 3,
+        createdAt: 1700000000000,
+      };
+
+      const result = deserializeSnapshot(persisted);
+
+      expect(result.id).toBe('snap1');
+      expect(result.projectId).toBe('proj1');
+      expect(result.files).toHaveLength(1);
+      expect(result.files[0].path).toBe('src/App.tsx');
+      expect(result.files[0].content).toBe('export default App');
+      expect(result.trigger).toBe('refine');
+      expect(result.messageIndex).toBe(3);
+    });
+
+    it('should deep-clone files so modifying result does not affect the persisted original', () => {
+      const persisted: PersistedSnapshot = {
+        id: 'snap2',
+        projectId: 'proj2',
+        files: [{ path: 'src/App.tsx', content: 'original' }],
+        trigger: 'editor-save',
+        messageIndex: null,
+        createdAt: 1700000001000,
+      };
+
+      const result = deserializeSnapshot(persisted);
+
+      // Mutating the deserialized result should NOT affect the persisted original
+      result.files[0].content = 'mutated';
+      expect(persisted.files[0].content).toBe('original');
+    });
+
+    it('should round-trip: deserialize(serialize(data)) should preserve all fields', () => {
+      const files: ProjectFile[] = [
+        { path: 'src/App.tsx', content: 'export default App' },
+        { path: 'package.json', content: '{"name": "round-trip"}' },
+      ];
+
+      const serialized = serializeSnapshot({
+        id: 'snap-rt',
+        projectId: 'proj-rt',
+        files,
+        trigger: 'refine',
+        messageIndex: 10,
+        createdAt: 1700000005000,
+      });
+
+      const deserialized = deserializeSnapshot(serialized);
+
+      expect(deserialized.id).toBe('snap-rt');
+      expect(deserialized.projectId).toBe('proj-rt');
+      expect(deserialized.files).toEqual(files);
+      expect(deserialized.trigger).toBe('refine');
+      expect(deserialized.messageIndex).toBe(10);
+      expect(deserialized.createdAt).toBe(1700000005000);
     });
   });
 });

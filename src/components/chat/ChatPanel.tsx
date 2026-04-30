@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, Sparkles, Plus } from 'lucide-react';
+import { Send, User, Bot, Sparkles, Plus, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
@@ -12,6 +12,8 @@ interface ChatPanelProps {
   onSendMessage: (content: string) => void;
   isGenerating: boolean;
   onNewChat?: () => void;
+  /** Callback to restore snapshot for a message — version-history-undo */
+  onRestoreSnapshot?: (messageIndex: number) => void;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -19,6 +21,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   onSendMessage,
   isGenerating,
   onNewChat,
+  onRestoreSnapshot,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,7 +70,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             <p>Describe what you want to create and let the AI do the magic.</p>
           </div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, index) => (
             <div
               key={msg.id}
               className={`message-item ${msg.role}`}
@@ -79,13 +82,34 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
               <div className="message-content">
                 <div className="message-header">
-                  <span className="sender">{msg.role === 'user' ? 'You' : 'AI Assistant'}</span>
+                  <span className="sender">
+                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                  </span>
                 </div>
                 <div className="message-text">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSanitize]}
+                  >
                     {msg.content}
                   </ReactMarkdown>
                 </div>
+                {msg.role === 'assistant' && onRestoreSnapshot && (
+                  <button
+                    className="btn-restore-version"
+                    data-testid="btn-restore-version"
+                    onClick={() => onRestoreSnapshot(index)}
+                    disabled={isGenerating}
+                    title={
+                      isGenerating
+                        ? 'Cannot restore while generating'
+                        : 'Restore this version'
+                    }
+                  >
+                    <RotateCcw size={12} />
+                    <span>Restore</span>
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -124,7 +148,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             rows={1}
             disabled={isGenerating}
           />
-          <button type="submit" className="btn-send" disabled={!input.trim() || isGenerating}>
+          <button
+            type="submit"
+            className="btn-send"
+            disabled={!input.trim() || isGenerating}
+          >
             <Send size={18} />
           </button>
         </form>

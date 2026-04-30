@@ -208,6 +208,30 @@ vi.mock('../../hooks/useFileTree', () => ({
   }),
 }));
 
+// ===== Mock useVersionHistory (version-history-undo) =====
+const mockCreateSnapshot = vi.fn();
+const mockRestoreSnapshot = vi.fn();
+const mockDeleteSnapshot = vi.fn();
+const mockRefreshSnapshots = vi.fn();
+
+vi.mock('../../hooks/useVersionHistory', () => ({
+  useVersionHistory: () => ({
+    snapshots: [],
+    isLoading: false,
+    isGenerating: false,
+    setIsGenerating: vi.fn(),
+    createSnapshot: mockCreateSnapshot,
+    restoreSnapshot: mockRestoreSnapshot,
+    deleteSnapshot: mockDeleteSnapshot,
+    refreshSnapshots: mockRefreshSnapshots,
+  }),
+}));
+
+// ===== Mock VersionHistoryPanel =====
+vi.mock('../../components/common/VersionHistoryPanel', () => ({
+  default: () => <div data-testid="version-history-panel" />,
+}));
+
 // ===== Mock mergeFiles + fileDiff =====
 vi.mock('../../utils/mergeFiles', () => ({
   mergeFiles: vi.fn((existing: unknown[], incoming: unknown[]) => {
@@ -239,6 +263,10 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
     mockRefresh.mockReset();
     mockUpdateFiles.mockReset();
     mockShowToast.mockReset();
+    mockCreateSnapshot.mockReset();
+    mockRestoreSnapshot.mockReset();
+    mockDeleteSnapshot.mockReset();
+    mockRefreshSnapshots.mockReset();
   });
 
   afterEach(() => {
@@ -607,10 +635,10 @@ describe('BuilderPage — refine routing (ITR-002)', () => {
       undoCallback();
     });
 
-    // Assert: after undo, the next refine should see the original files
-    // (the preRefineSnapshot was set before refine, so Undo reverts to that)
-    // We can verify by checking that the state was reverted —
-    // we test this indirectly: after Undo, if we send another refine,
+// Assert: after undo, the next refine should see the original files
+// (versionHistory.restoreSnapshot reverted currentFiles to the pre-refine state)
+// We can verify by checking that the state was reverted —
+// we test this indirectly: after Undo, if we send another refine,
     // it should use the original files, not the merged ones
     mockRefine.mockResolvedValue({
       message: 'Refined again',

@@ -197,6 +197,31 @@ vi.mock('../../services/webcontainer/WebContainerManager', () => ({
   PROTECTED_PATHS: ['/package.json', '/vite.config.ts', '/index.html'],
 }));
 
+// ===== Mock useVersionHistory (version-history-undo) =====
+const mockCreateSnapshot = vi.fn();
+const mockRestoreSnapshot = vi.fn();
+const mockDeleteSnapshot = vi.fn();
+const mockRefreshSnapshots = vi.fn();
+const mockSnapshots: Array<{ id: string; trigger: string; messageIndex: number | null; createdAt: number }> = [];
+
+vi.mock('../../hooks/useVersionHistory', () => ({
+  useVersionHistory: () => ({
+    snapshots: mockSnapshots,
+    isLoading: false,
+    isGenerating: false,
+    setIsGenerating: vi.fn(),
+    createSnapshot: mockCreateSnapshot,
+    restoreSnapshot: mockRestoreSnapshot,
+    deleteSnapshot: mockDeleteSnapshot,
+    refreshSnapshots: mockRefreshSnapshots,
+  }),
+}));
+
+// ===== Mock VersionHistoryPanel =====
+vi.mock('../../components/common/VersionHistoryPanel', () => ({
+  default: () => <div data-testid="version-history-panel" />,
+}));
+
 // ===== Mock useFileTree =====
 vi.mock('../../hooks/useFileTree', () => ({
   useFileTree: () => ({
@@ -245,6 +270,11 @@ describe('E2E: Chat Iterative Refine', () => {
     mockRefresh.mockReset();
     mockUpdateFiles.mockReset();
     mockShowToast.mockReset();
+    mockCreateSnapshot.mockReset();
+    mockRestoreSnapshot.mockReset();
+    mockDeleteSnapshot.mockReset();
+    mockRefreshSnapshots.mockReset();
+    mockSnapshots.length = 0;
   });
 
   afterEach(() => {
@@ -514,193 +544,218 @@ describe('E2E: Chat Iterative Refine', () => {
   // 5.3: Undo reverts currentFiles to pre-refine snapshot
   // ---------------------------------------------------------------------------
   describe('5.3: Undo reverts currentFiles to pre-refine snapshot', () => {
-    it('should revert to pre-refine files when Undo callback is invoked', async () => {
-      // Arrange: mergeFiles mock returns overwrittenPaths
-      const { mergeFiles } = await import('../../utils/mergeFiles');
+  it('should revert to pre-refine files when Undo callback is invoked', async () => {
+    // Arrange: mergeFiles mock returns overwrittenPaths
+    const { mergeFiles } = await import('../../utils/mergeFiles');
 
-      const originalFiles = [
-        { path: 'src/App.tsx', content: 'original-app' },
+    const originalFiles = [
+      { path: 'src/App.tsx', content: 'original-app' },
+      { path: 'src/utils.ts', content: 'original-utils' },
+    ];
+    const refinedFiles = [{ path: 'src/App.tsx', content: 'refined-app' }];
+
+    mockGenerate.mockResolvedValue({
+      message: 'App created',
+      files: originalFiles,
+    });
+    mockRefine.mockResolvedValue({
+      message: 'Refined',
+      files: refinedFiles,
+    });
+    mockMount.mockResolvedValue(undefined);
+    mockInstall.mockResolvedValue(0);
+    mockRunDev.mockResolvedValue(undefined);
+    mockUpdateFiles.mockResolvedValue(undefined);
+
+    // mergeFiles returns overwrite for src/App.tsx
+    (mergeFiles as ReturnType<typeof vi.fn>).mockReturnValue({
+      merged: [
+        { path: 'src/App.tsx', content: 'refined-app' },
         { path: 'src/utils.ts', content: 'original-utils' },
-      ];
-      const refinedFiles = [{ path: 'src/App.tsx', content: 'refined-app' }];
-
-      mockGenerate.mockResolvedValue({
-        message: 'App created',
-        files: originalFiles,
-      });
-      mockRefine.mockResolvedValue({
-        message: 'Refined',
-        files: refinedFiles,
-      });
-      mockMount.mockResolvedValue(undefined);
-      mockInstall.mockResolvedValue(0);
-      mockRunDev.mockResolvedValue(undefined);
-      mockUpdateFiles.mockResolvedValue(undefined);
-
-      // mergeFiles returns overwrite for src/App.tsx
-      (mergeFiles as ReturnType<typeof vi.fn>).mockReturnValue({
-        merged: [
-          { path: 'src/App.tsx', content: 'refined-app' },
-          { path: 'src/utils.ts', content: 'original-utils' },
-        ],
-        overwrittenPaths: ['src/App.tsx'],
-      });
-
-      render(
-        <RouterWrapper>
-          <BuilderPage />
-        </RouterWrapper>
-      );
-
-      const sendBtn = screen.getByTestId('send-message-btn');
-
-      // Step 1: Generate → creates currentFiles
-      await act(async () => {
-        sendBtn.click();
-      });
-      await waitFor(() => {
-        expect(mockGenerate).toHaveBeenCalled();
-      });
-
-      // Step 2: Refine → overwrites a file, shows warn toast
-      await act(async () => {
-        sendBtn.click();
-      });
-      await waitFor(() => {
-        expect(mockRefine).toHaveBeenCalled();
-      });
-
-      // Assert: warn toast shown with Undo action
-      await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'warn',
-            action: expect.objectContaining({
-              label: 'Undo',
-            }),
-          })
-        );
-      });
-
-      // Extract Undo callback from toast call
-      const toastCall = mockShowToast.mock.calls.find(
-        (call: Array<{ type: string }>) => call[0].type === 'warn'
-      );
-      const undoCallback = toastCall?.[0]?.action?.callback;
-      expect(undoCallback).toBeDefined();
-
-      // Step 3: Execute Undo → reverts currentFiles to pre-refine snapshot
-      await act(async () => {
-        undoCallback();
-      });
-
-      // Step 4: Verify revert by sending another refine —
-      // the refine mock should receive the ORIGINAL files, not the merged ones
-      mockRefine.mockClear();
-      mockRefine.mockResolvedValue({
-        message: 'Refined again',
-        files: [],
-      });
-
-      await act(async () => {
-        sendBtn.click();
-      });
-      await waitFor(() => {
-        expect(mockRefine).toHaveBeenCalled();
-      });
-
-      // The refine call should receive the original files (pre-refine snapshot)
-      // NOT the merged files (which would include 'refined-app')
-      const refineCallArgs = mockRefine.mock.calls[0];
-      const filesPassedToRefine = refineCallArgs[0] as Array<{ path: string; content: string }>;
-
-      // After Undo, currentFiles should be back to the pre-refine state
-      // which is the original generated files
-      expect(filesPassedToRefine).toEqual(originalFiles);
+      ],
+      overwrittenPaths: ['src/App.tsx'],
     });
 
-    it('should clear preRefineSnapshot after Undo to prevent double-undo', async () => {
-      // Arrange
-      const { mergeFiles } = await import('../../utils/mergeFiles');
-
-      mockGenerate.mockResolvedValue({
-        message: 'App created',
-        files: [{ path: 'src/App.tsx', content: 'original' }],
+    // versionHistory: createSnapshot pushes to mockSnapshots; restoreSnapshot returns original files
+    let snapshotCounter = 0;
+    mockCreateSnapshot.mockImplementation(async (files: Array<{ path: string; content: string }>) => {
+      const id = `snap-${snapshotCounter++}`;
+      mockSnapshots.push({ id, trigger: 'refine', messageIndex: null, createdAt: Date.now() });
+      // Store the files for later restore
+      mockRestoreSnapshot.mockImplementation(async (snapId: string) => {
+        const snap = mockSnapshots.find((s) => s.id === snapId);
+        if (snap) return files;
+        return null;
       });
-      mockRefine.mockResolvedValue({
-        message: 'Refined',
-        files: [{ path: 'src/App.tsx', content: 'refined' }],
-      });
-      mockMount.mockResolvedValue(undefined);
-      mockInstall.mockResolvedValue(0);
-      mockRunDev.mockResolvedValue(undefined);
-      mockUpdateFiles.mockResolvedValue(undefined);
-
-      (mergeFiles as ReturnType<typeof vi.fn>).mockReturnValue({
-        merged: [{ path: 'src/App.tsx', content: 'refined' }],
-        overwrittenPaths: ['src/App.tsx'],
-      });
-
-      render(
-        <RouterWrapper>
-          <BuilderPage />
-        </RouterWrapper>
-      );
-
-      const sendBtn = screen.getByTestId('send-message-btn');
-
-      // Generate
-      await act(async () => {
-        sendBtn.click();
-      });
-      await waitFor(() => {
-        expect(mockGenerate).toHaveBeenCalled();
-      });
-
-      // Refine
-      await act(async () => {
-        sendBtn.click();
-      });
-      await waitFor(() => {
-        expect(mockRefine).toHaveBeenCalled();
-      });
-
-      // Get and execute Undo
-      await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warn' }));
-      });
-
-      const toastCall = mockShowToast.mock.calls.find(
-        (call: Array<{ type: string }>) => call[0].type === 'warn'
-      );
-      const undoCallback = toastCall?.[0]?.action?.callback;
-
-      // First Undo: should revert
-      await act(async () => {
-        undoCallback();
-      });
-
-      // Second Undo: should be a no-op (snapshot was cleared)
-      // Calling it again should not throw or change state
-      await act(async () => {
-        undoCallback();
-      });
-
-      // After double-undo, send another refine to verify files are still the original
-      mockRefine.mockClear();
-      mockRefine.mockResolvedValue({ message: 'Refined', files: [] });
-
-      await act(async () => {
-        sendBtn.click();
-      });
-      await waitFor(() => {
-        expect(mockRefine).toHaveBeenCalled();
-      });
-
-      // Files should still be the original (first undo worked, second was no-op)
-      const filesPassed = mockRefine.mock.calls[0][0] as Array<{ path: string; content: string }>;
-      expect(filesPassed.some((f) => f.content === 'original')).toBe(true);
     });
+
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
+
+    const sendBtn = screen.getByTestId('send-message-btn');
+
+    // Step 1: Generate → creates currentFiles
+    await act(async () => {
+      sendBtn.click();
+    });
+    await waitFor(() => {
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
+    // Step 2: Refine → overwrites a file, shows warn toast
+    await act(async () => {
+      sendBtn.click();
+    });
+    await waitFor(() => {
+      expect(mockRefine).toHaveBeenCalled();
+    });
+
+    // Assert: warn toast shown with Undo action
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'warn',
+          action: expect.objectContaining({
+            label: 'Undo',
+          }),
+        })
+      );
+    });
+
+    // Extract Undo callback from toast call
+    const toastCall = mockShowToast.mock.calls.find(
+      (call: Array<{ type: string }>) => call[0].type === 'warn'
+    );
+    const undoCallback = toastCall?.[0]?.action?.callback;
+    expect(undoCallback).toBeDefined();
+
+    // Step 3: Execute Undo → reverts currentFiles to pre-refine snapshot
+    await act(async () => {
+      undoCallback();
+    });
+
+    // Step 4: Verify revert by sending another refine —
+    // the refine mock should receive the ORIGINAL files, not the merged ones
+    mockRefine.mockClear();
+    mockRefine.mockResolvedValue({
+      message: 'Refined again',
+      files: [],
+    });
+
+    await act(async () => {
+      sendBtn.click();
+    });
+    await waitFor(() => {
+      expect(mockRefine).toHaveBeenCalled();
+    });
+
+    // The refine call should receive the original files (pre-refine snapshot)
+    // NOT the merged files (which would include 'refined-app')
+    const refineCallArgs = mockRefine.mock.calls[0];
+    const filesPassedToRefine = refineCallArgs[0] as Array<{ path: string; content: string }>;
+
+    // After Undo, currentFiles should be back to the pre-refine state
+    // which is the original generated files
+    expect(filesPassedToRefine).toEqual(originalFiles);
+  });
+
+  it('should allow version-history undo — second undo is a no-op since files are already restored', async () => {
+    // Arrange
+    const { mergeFiles } = await import('../../utils/mergeFiles');
+
+    mockGenerate.mockResolvedValue({
+      message: 'App created',
+      files: [{ path: 'src/App.tsx', content: 'original' }],
+    });
+    mockRefine.mockResolvedValue({
+      message: 'Refined',
+      files: [{ path: 'src/App.tsx', content: 'refined' }],
+    });
+    mockMount.mockResolvedValue(undefined);
+    mockInstall.mockResolvedValue(0);
+    mockRunDev.mockResolvedValue(undefined);
+    mockUpdateFiles.mockResolvedValue(undefined);
+
+    (mergeFiles as ReturnType<typeof vi.fn>).mockReturnValue({
+      merged: [{ path: 'src/App.tsx', content: 'refined' }],
+      overwrittenPaths: ['src/App.tsx'],
+    });
+
+    // versionHistory: createSnapshot pushes to mockSnapshots; restoreSnapshot returns files
+    let snapshotCounter = 0;
+    mockCreateSnapshot.mockImplementation(async (files: Array<{ path: string; content: string }>) => {
+      const id = `snap-${snapshotCounter++}`;
+      mockSnapshots.push({ id, trigger: 'refine', messageIndex: null, createdAt: Date.now() });
+      mockRestoreSnapshot.mockImplementation(async (snapId: string) => {
+        const snap = mockSnapshots.find((s) => s.id === snapId);
+        if (snap) return files;
+        return null;
+      });
+    });
+
+    render(
+      <RouterWrapper>
+        <BuilderPage />
+      </RouterWrapper>
+    );
+
+    const sendBtn = screen.getByTestId('send-message-btn');
+
+    // Generate
+    await act(async () => {
+      sendBtn.click();
+    });
+    await waitFor(() => {
+      expect(mockGenerate).toHaveBeenCalled();
+    });
+
+    // Refine
+    await act(async () => {
+      sendBtn.click();
+    });
+    await waitFor(() => {
+      expect(mockRefine).toHaveBeenCalled();
+    });
+
+    // Get and execute Undo
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warn' }));
+    });
+
+    const toastCall = mockShowToast.mock.calls.find(
+      (call: Array<{ type: string }>) => call[0].type === 'warn'
+    );
+    const undoCallback = toastCall?.[0]?.action?.callback;
+
+    // First Undo: should revert
+    await act(async () => {
+      undoCallback();
+    });
+
+    // Second Undo: with version history, it restores the same snapshot again
+    // which sets the same files — effectively a no-op since they're already restored
+    await act(async () => {
+      undoCallback();
+    });
+
+    // After double-undo, send another refine to verify files are still the original
+    mockRefine.mockClear();
+    mockRefine.mockResolvedValue({ message: 'Refined', files: [] });
+
+    await act(async () => {
+      sendBtn.click();
+    });
+    await waitFor(() => {
+      expect(mockRefine).toHaveBeenCalled();
+    });
+
+    // Files should still be the original (first undo worked, second was a no-op)
+    const filesPassed = mockRefine.mock.calls[0][0] as Array<{ path: string; content: string }>;
+    expect(filesPassed.some((f) => f.content === 'original')).toBe(true);
+  });
   });
 
   // ---------------------------------------------------------------------------
@@ -868,27 +923,39 @@ describe('E2E: Chat Iterative Refine', () => {
       expect(mockRefine).not.toHaveBeenCalled();
     });
 
-    it('should clear preRefineSnapshot on New Chat to prevent stale undo', async () => {
-      // Arrange
-      const { mergeFiles } = await import('../../utils/mergeFiles');
+  it('should create new version-history snapshot on New Chat cycle — no stale undo', async () => {
+    // Arrange
+    const { mergeFiles } = await import('../../utils/mergeFiles');
 
-      mockGenerate.mockResolvedValue({
-        message: 'App created',
-        files: [{ path: 'src/App.tsx', content: 'original' }],
-      });
-      mockRefine.mockResolvedValue({
-        message: 'Refined',
-        files: [{ path: 'src/App.tsx', content: 'refined' }],
-      });
-      mockMount.mockResolvedValue(undefined);
-      mockInstall.mockResolvedValue(0);
-      mockRunDev.mockResolvedValue(undefined);
-      mockUpdateFiles.mockResolvedValue(undefined);
+    mockGenerate.mockResolvedValue({
+      message: 'App created',
+      files: [{ path: 'src/App.tsx', content: 'original' }],
+    });
+    mockRefine.mockResolvedValue({
+      message: 'Refined',
+      files: [{ path: 'src/App.tsx', content: 'refined' }],
+    });
+    mockMount.mockResolvedValue(undefined);
+    mockInstall.mockResolvedValue(0);
+    mockRunDev.mockResolvedValue(undefined);
+    mockUpdateFiles.mockResolvedValue(undefined);
 
-      (mergeFiles as ReturnType<typeof vi.fn>).mockReturnValue({
-        merged: [{ path: 'src/App.tsx', content: 'refined' }],
-        overwrittenPaths: ['src/App.tsx'],
+    (mergeFiles as ReturnType<typeof vi.fn>).mockReturnValue({
+      merged: [{ path: 'src/App.tsx', content: 'refined' }],
+      overwrittenPaths: ['src/App.tsx'],
+    });
+
+    // versionHistory: each createSnapshot captures the files at that moment
+    let snapshotCounter = 0;
+    const snapshotFilesMap = new Map<string, Array<{ path: string; content: string }>>();
+    mockCreateSnapshot.mockImplementation(async (files: Array<{ path: string; content: string }>) => {
+      const id = `snap-${snapshotCounter++}`;
+      mockSnapshots.push({ id, trigger: 'refine', messageIndex: null, createdAt: Date.now() });
+      snapshotFilesMap.set(id, files);
+      mockRestoreSnapshot.mockImplementation(async (snapId: string) => {
+        return snapshotFilesMap.get(snapId) || null;
       });
+    });
 
       render(
         <RouterWrapper>
@@ -899,7 +966,7 @@ describe('E2E: Chat Iterative Refine', () => {
       const sendBtn = screen.getByTestId('send-message-btn');
       const newChatBtn = screen.getByTestId('new-chat-btn');
 
-      // Generate + refine to create a preRefineSnapshot
+      // Generate + refine to create a version-history snapshot
       await act(async () => {
         sendBtn.click();
       });

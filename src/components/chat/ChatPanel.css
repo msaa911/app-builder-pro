@@ -260,3 +260,30 @@
   text-align: center;
   margin-top: 8px;
 }
+
+/* Restore version button — version-history-undo */
+.btn-restore-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-restore-version:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.btn-restore-version:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
