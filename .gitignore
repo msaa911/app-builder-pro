@@ -31,3 +31,7 @@ test-output.txt
 test-results.json
 
 .vercel
+
+# Playwright artifacts
+test-results/
+playwright-report/

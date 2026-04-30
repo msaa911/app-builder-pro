@@ -123,17 +123,17 @@ const LandingPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <div className="feature-card glass">
+          <div className="feature-card glass" data-testid="feature-card">
             <Code2 className="feature-icon" />
             <h3>Real Code Generation</h3>
             <p>Generated React and Tailwind code you can actually own and export.</p>
           </div>
-          <div className="feature-card glass">
+          <div className="feature-card glass" data-testid="feature-card">
             <Terminal className="feature-icon" />
             <h3>In-Browser Preview</h3>
             <p>Run your application instantly inside our sandboxed execution engine.</p>
           </div>
-          <div className="feature-card glass">
+          <div className="feature-card glass" data-testid="feature-card">
             <Sparkles className="feature-icon" />
             <h3>Iterative Building</h3>
             <p>Refine your app by simply chatting with the AI agent.</p>

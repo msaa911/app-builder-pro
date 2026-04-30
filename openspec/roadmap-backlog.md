@@ -1,8 +1,8 @@
 # App Builder Pro — Roadmap & Backlog
 
-**Last Updated**: 2026-04-29
-**Total Archived Changes**: 21
-**Tests**: 1761 passing | **Coverage**: 96%+ stmts | **tsc**: clean
+**Last Updated**: 2026-04-30
+**Total Archived Changes**: 23
+**Tests**: 1764 unit + 25 E2E passing | **Coverage**: 96%+ stmts | **tsc**: clean
 
 ---
 
@@ -31,30 +31,22 @@
 | 19 | landing-page-links | COMPLETE | react-router-dom, ShowcasePage, TemplatesPage (6 templates), SignInModal, BuilderPage route-aware (54 tests across 7 files) |
 | 20 | topbar-share | COMPLETE | Share button with clipboard copy, copied feedback (2s), disabled guard, toast success/error (12 tests, commit 6ae30e8) |
 | 21 | file-rename | COMPLETE | File/folder rename via context menu → inline input → WC fs.rename, protected path guard, activeFile path update (13 tests, commit 755a193) |
+| 22 | auth-user-accounts | COMPLETE | Supabase Auth (email/password + Google/GitHub OAuth), AuthContext, SignInModal, TopBar auth-aware, BuilderPage guard, shared supabaseClient (16 files, +1224/-100, commit 8fe99db) |
+| 23 | e2e-playwright | COMPLETE | Playwright Phase 1 smoke tests (25 E2E tests, 5 spec files), crypto→FNV-1a bugfix, Chromium only |
 
 ---
 
 ## Pending Features — Ordered by Priority
 
-### 🔴 HIGH (bloquea E2E real)
+### 🟡 HIGH (UX incompleta — ya no bloquea E2E)
 
-#### 1. Auth / User Accounts
-- **Problem**: No hay autenticación ni cuentas de usuario — la app es 100% local
-- **Impact**: Sin auth no hay multi-usuario, no hay sharing real, no hay deploy persistente
-- **Complexity**: Alta
-- **SDD Change Name**: `auth-user-accounts`
-
-### 🟡 MEDIUM (UX incompleta)
-
-#### 2. Version History / Undo
+#### 1. Version History / Undo
 - **Problem**: Sin historial de cambios ni undo de generación
 - **Impact**: Un mal refine destruye código sin vuelta atrás
 - **Complexity**: Alta
 - **SDD Change Name**: `version-history-undo`
 
-### 🔵 LOW (polishing)
-
-#### 3. Privacy Policy Legal Review
+#### 2. Privacy Policy Legal Review
 - **Problem**: 9 TODO comments en el texto legal del PrivacyPolicyModal
 - **Impact**: Legal compliance — requiere revisión legal real, no código
 - **Complexity**: Baja (pero requiere humano legal)
@@ -91,18 +83,21 @@ Phase 2 — Stability & UX: ✅ COMPLETE
   2.1 project-persistence → ✅ DONE
   2.2 landing-page-links → ✅ DONE
 
-Phase 3 — Sharing & Auth: 🔄 IN PROGRESS
-  3.1 topbar-share → ✅ DONE
-  3.2 file-deletion-rename → ✅ DONE (file-rename commit 755a193)
-  3.3 auth-user-accounts → NEXT
+Phase 3 — Sharing & Auth: ✅ COMPLETE
+3.1 topbar-share → ✅ DONE
+3.2 file-deletion-rename → ✅ DONE (file-rename commit 755a193)
+3.3 auth-user-accounts → ✅ DONE (commit 8fe99db)
 
-Phase 4 — Quality of Life:
-  4.1 version-history-undo → undo/refine sin perder código
+Phase 4 — Quality of Life: 🔄 NEXT
+4.1 version-history-undo → undo/refine sin perder código
 
-Phase 5 — Compliance (último):
-  5.1 privacy-policy-legal → requiere revisión legal humana
+Phase 5 — E2E Playwright: ✅ Phase 1 COMPLETE
+5.1 e2e-playwright → ✅ DONE (25 smoke tests, Chromium only)
+5.2 e2e-playwright-ci → ❌ TODO (CI job in deploy.yml)
+5.3 e2e-playwright-auth → ❌ TODO (Phase 2: auth mocking)
 
-E2E Playwright: configurar DESPUÉS de Phase 3 completa
+Phase 6 — Compliance (último):
+6.1 privacy-policy-legal → requiere revisión legal humana
 ```
 
 ---

@@ -10,7 +10,7 @@ describe('Phase 5: Cache Layer', () => {
       cache = new AnalysisCache();
     });
 
-    it('should generate consistent SHA256 hash for same code', () => {
+    it('should generate consistent hash for same code', () => {
       const code = 'interface User { id: string; name: string; }';
 
       // Use internal generateKey method via get/has
@@ -19,7 +19,7 @@ describe('Phase 5: Cache Layer', () => {
       const key2 = cache.generateKey(code);
 
       expect(key1).toBe(key2);
-      expect(key1).toHaveLength(64); // SHA256 hex = 64 chars
+      expect(key1).toHaveLength(16); // FNV-1a 16-char hex
     });
 
     it('should generate different hash for different code', () => {
