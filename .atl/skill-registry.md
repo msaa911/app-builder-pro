@@ -1,6 +1,6 @@
 # Skill Registry
 
-**Project**: lovable_clone
+**Project**: app-builder-pro
 **Generated**: Thu Apr 16 2026
 
 ---

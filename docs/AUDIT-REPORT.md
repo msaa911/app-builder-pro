@@ -1,6 +1,6 @@
 # 🔒 Security & Quality Audit Report
 
-**Project**: lovable_clone (App Builder Pro)  
+**Project**: app-builder-pro  
 **Date**: 2026-04-20  
 **Auditor**: SDD Automated Audit System  
 **Risk Profile**: CRITICAL (SaaS B2B, sensitive data)  

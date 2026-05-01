@@ -1,7 +1,7 @@
 # Exploration: pre-production-hardening
 
 **Date**: 2026-04-16
-**Project**: lovable_clone (App Builder Pro)
+**Project**: app-builder-pro
 **Artifact Store**: openspec
 
 ---

@@ -1,8 +1,8 @@
 # App Builder Pro — Roadmap & Backlog
 
 **Last Updated**: 2026-04-30
-**Total Archived Changes**: 23
-**Tests**: 1764 unit + 25 E2E passing | **Coverage**: 96%+ stmts | **tsc**: clean
+**Total Archived Changes**: 24
+**Tests**: 1828 passing | **Coverage**: 96%+ stmts | **tsc**: clean
 
 ---
 
@@ -33,6 +33,7 @@
 | 21 | file-rename | COMPLETE | File/folder rename via context menu → inline input → WC fs.rename, protected path guard, activeFile path update (13 tests, commit 755a193) |
 | 22 | auth-user-accounts | COMPLETE | Supabase Auth (email/password + Google/GitHub OAuth), AuthContext, SignInModal, TopBar auth-aware, BuilderPage guard, shared supabaseClient (16 files, +1224/-100, commit 8fe99db) |
 | 23 | e2e-playwright | COMPLETE | Playwright Phase 1 smoke tests (25 E2E tests, 5 spec files), crypto→FNV-1a bugfix, Chromium only |
+| 24 | version-history-undo | COMPLETE | Multi-level undo with IDB snapshots, FIFO eviction (MAX=20), restore with package.json detection, cascade delete, backward-compatible undo toast (1828 tests, commit 9daa754) |
 
 ---
 
@@ -40,13 +41,7 @@
 
 ### 🟡 HIGH (UX incompleta — ya no bloquea E2E)
 
-#### 1. Version History / Undo
-- **Problem**: Sin historial de cambios ni undo de generación
-- **Impact**: Un mal refine destruye código sin vuelta atrás
-- **Complexity**: Alta
-- **SDD Change Name**: `version-history-undo`
-
-#### 2. Privacy Policy Legal Review
+#### 1. Privacy Policy Legal Review
 - **Problem**: 9 TODO comments en el texto legal del PrivacyPolicyModal
 - **Impact**: Legal compliance — requiere revisión legal real, no código
 - **Complexity**: Baja (pero requiere humano legal)
@@ -88,8 +83,8 @@ Phase 3 — Sharing & Auth: ✅ COMPLETE
 3.2 file-deletion-rename → ✅ DONE (file-rename commit 755a193)
 3.3 auth-user-accounts → ✅ DONE (commit 8fe99db)
 
-Phase 4 — Quality of Life: 🔄 NEXT
-4.1 version-history-undo → undo/refine sin perder código
+Phase 4 — Quality of Life: ✅ COMPLETE
+4.1 version-history-undo → ✅ DONE (multi-level undo, IDB snapshots, commit 9daa754)
 
 Phase 5 — E2E Playwright: ✅ Phase 1 COMPLETE
 5.1 e2e-playwright → ✅ DONE (25 smoke tests, Chromium only)

@@ -1,8 +1,8 @@
 # OpenSpec Configuration
-# Project: lovable_clone (App Builder Pro)
+# Project: app-builder-pro
 
 project:
-  name: lovable_clone
+  name: app-builder-pro
   type: web-application
   description: AI-powered web application builder using React, Vite, WebContainer API, and Gemini API
 

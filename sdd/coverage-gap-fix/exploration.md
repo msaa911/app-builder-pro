@@ -1,7 +1,7 @@
 # Exploration: coverage-gap-fix
 
 ## Context
-- **Project**: lovable_clone (App Builder Pro)
+- **Project**: app-builder-pro
 - **Problem**: Changes 1, 2, 3 have coverage gaps preventing 100%
 - **Goal**: Close coverage gaps to achieve >95% real coverage
 
